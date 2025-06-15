@@ -1,0 +1,19 @@
+{
+  "[python]": {
+    "diffEditor.ignoreTrimWhitespace": false,
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.codeActionsOnSave": {
+      "source.fixAll": "always", 
+      "source.organizeImports.ruff": "explicit",
+    }
+  },
+  "mypy-type-checker.importStrategy": "fromEnvironment",
+  "mypy-type-checker.args": [
+    "--config-file=pyproject.toml"
+  ],
+  "ruff.importStrategy": "fromEnvironment",
+  "ruff.path": [
+    "--config-file=pyproject.toml"
+  ]
+}
