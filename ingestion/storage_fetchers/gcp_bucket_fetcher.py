@@ -1,6 +1,4 @@
-import os
 from pathlib import Path
-from typing import Optional
 
 from google.cloud.storage import Client
 
@@ -8,9 +6,7 @@ from ingestion.interfaces import Fetcher
 
 
 class GCPBucketFetcher(Fetcher):
-    def __init__(self, bucket_name: str, prefix: str = "", credentials_path: Optional[str] = None):
-        if credentials_path:
-            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
+    def __init__(self, bucket_name: str, prefix: str = ""):
         self.client = Client()
         self.bucket = self.client.bucket(bucket_name)
         self.prefix = prefix
