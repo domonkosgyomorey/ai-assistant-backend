@@ -1,7 +1,7 @@
 from typing import Tuple
 
-from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.embeddings.base import Embeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 
 
 def get_embeddings() -> Tuple[Embeddings, int]:

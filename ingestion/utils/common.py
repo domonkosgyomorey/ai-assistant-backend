@@ -9,4 +9,3 @@ class CustomDocument:
     short_description: str
     page_number: int
     page_count: int
-    metadata: dict

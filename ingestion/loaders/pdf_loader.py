@@ -1,3 +1,4 @@
+import os
 from typing import List
 
 import fitz
@@ -17,14 +18,15 @@ class PDFLoader(DocumentLoader):
         for i in range(page_count):
             page = doc.load_page(i)
             content = page.get_text("text")
-            data = {
-                "content": content,
-                "file_path": path,
-                "title": title,
-                "page_number": i + 1,
-                "page_count": page_count,
-                "description": description,
-            }
-            pages_docs.append(CustomDocument(**data))
+            pages_docs.append(
+                CustomDocument(
+                    content=content,
+                    file_path=os.path.basename(path),
+                    title=title,
+                    page_number=i + 1,
+                    page_count=page_count,
+                    short_description=description,
+                )
+            )
 
         return pages_docs

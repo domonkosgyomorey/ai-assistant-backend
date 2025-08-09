@@ -14,10 +14,17 @@ logging.basicConfig(level=logging.INFO)
 
 
 class MongoAtlasVectorStore(DocumentStore):
-    def __init__(self, collection_name: str = config.mongo.COLLECTION_NAME):
+    def __init__(
+        self,
+        collection_name: str = config.mongo.COLLECTION_NAME,
+        use_existing_collection: bool = False,
+        clear_collection_before: bool = False,
+    ):
         self.uri = config.mongo.URI
         self.db_name = config.mongo.DB_NAME
         self.collection_name = collection_name
+        self.use_existing_collection = use_existing_collection
+        self.clear_collection_before = clear_collection_before
 
         try:
             self.client: MongoClient = MongoClient(self.uri)
@@ -27,7 +34,11 @@ class MongoAtlasVectorStore(DocumentStore):
             logger.error(f"Could not connect to MongoDB: {e}")
             raise
 
-        self.collection = self._get_or_throw_collection(self.collection_name)
+        self.collection = self.get_collection()
+        if clear_collection_before:
+            logger.info(f"Clearing collection '{self.collection_name}' before running the pipeline.")
+            self.collection.delete_many({})
+
         embedding, embed_dimension = get_embeddings()
         self.vector_store = MongoDBAtlasVectorSearch(
             collection=self.collection,
@@ -38,19 +49,23 @@ class MongoAtlasVectorStore(DocumentStore):
 
         self.vector_store.create_vector_search_index(dimensions=embed_dimension)
 
-    def _get_or_throw_collection(self, collection_name: str):
+    def get_collection(self):
         existing_collections = self.db.list_collection_names()
-        if collection_name in existing_collections:
-            logger.info(f"Collection '{collection_name}' already exists. Please delete before continuing.")
-            raise ValueError(f"Collection '{collection_name}' already exists. Please delete before continuing.")
+        if self.collection_name in existing_collections:
+            logger.info(f"Collection '{self.collection_name}' already exists.")
+            if not self.use_existing_collection:
+                exit(1)
+            else:
+                logger.warning(f"Using existing collection '{self.collection_name}'.")
+            return self.db[self.collection_name]
         try:
-            logger.info(f"Creating collection '{collection_name}'.")
-            return self.db.create_collection(collection_name)
+            logger.info(f"Creating collection '{self.collection_name}'.")
+            return self.db.create_collection(self.collection_name)
         except errors.CollectionInvalid:
-            logger.warning(f"Collection '{collection_name}' already exists (race condition).")
-            return self.db[collection_name]
+            logger.warning(f"Collection '{self.collection_name}' already exists (race condition).")
+            return self.db[self.collection_name]
         except Exception as e:
-            logger.error(f"Error creating collection '{collection_name}': {e}")
+            logger.error(f"Error creating collection '{self.collection_name}': {e}")
             raise
 
     def save(self, docs: list[Document]):
@@ -68,7 +83,7 @@ class MongoAtlasVectorStore(DocumentStore):
 
     def list_source_keys(self) -> list[str]:
         pipeline = [
-            {"$group": {"_id": "$metadata.file_path"}},  # Group by file_path in metadata
+            {"$group": {"_id": "$file_path"}},  # Group by file_path in metadata
             {"$project": {"file_path": "$_id", "_id": 0}},  # Project only the file_path field
         ]
 
