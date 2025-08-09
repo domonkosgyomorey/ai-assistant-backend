@@ -60,7 +60,7 @@ if __name__ == "__main__":
     processor: DocumentProcessor = DocumentProcessorImpl()
     store: DocumentStore = MongoAtlasVectorStore(
         collection_name=args.collection_name,
-        fail_on_collection_exists=args.fail_on_collection_exists,
+        use_existing_collection=args.use_existing_collection,
         clear_collection_before=args.clear_collection_before,
     )
 
