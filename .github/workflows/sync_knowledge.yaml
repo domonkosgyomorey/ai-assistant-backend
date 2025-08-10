@@ -1,0 +1,70 @@
+name: Sync GCP Bucket to MongoDB
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Select environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+      clear_collection_before:
+        description: 'Clear collection before sync'
+        required: false
+        default: false
+        type: boolean
+      use_existing_collection:
+        description: 'Use existing collection'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  DEV_PROJECT_ID: propane-will-468518-d0
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Calculate GCP project ID
+        id: calculate_project_id
+        run: |
+          if [ "${{ github.event.inputs.environment }}" = "prod" ]; then
+            echo "project_id=some-prod-project-id" >> $GITHUB_OUTPUT
+          else
+            echo "project_id=${{ env.DEV_PROJECT_ID }}" >> $GITHUB_OUTPUT
+          fi
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+          project_id: ${{ steps.calculate_project_id.outputs.project_id }}
+
+      - name: Calculate flag
+        id: set_flag
+        run: |
+          if [ "${{ inputs.clear_collection_before }}" = "true" ]; then
+            echo "clear_collection_before=--clear-collection-before" >> $GITHUB_OUTPUT
+          fi
+          if [ "${{ inputs.use_existing_collection }}" = "true" ]; then
+            echo "use_existing_collection=--use-existing-collection" >> $GITHUB_OUTPUT
+          fi
+      - name: Run sync pipeline
+        run: |
+          uv run -- python ingestion.sync_pipeline ${{ steps.set_flag.outputs.clear_collection_before }} ${{ steps.set_flag.outputs.use_existing_collection }}
