@@ -16,6 +16,12 @@ dev = [
     "langchain==0.3.27",
     "langchain-community==0.3.27",
     "langchain-mongodb==0.6.2",
+    "motor==3.7.1",
+    "pathlib2==2.3.7.post1",
+    "fastapi==0.116.1",
+    "uvicorn==0.35.0",
+    "tavily-python==0.7.10",
+    "langchain-ollama==0.3.6",
     {include-group = "ingestion"},
 ]
 

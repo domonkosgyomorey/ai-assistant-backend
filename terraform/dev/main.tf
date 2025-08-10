@@ -90,8 +90,14 @@ resource "google_secret_manager_secret_version" "github_sync_sa_secret_version" 
 }
 
 
-resource "google_secret_manager_secret_iam_member" "github_sync_sa_secret_access" {
+resource "google_secret_manager_secret_iam_member" "mongo_access" {
   secret_id = "projects/propane-will-468518-d0/secrets/MONGO_URI"
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:github-sync-bucket-reader@propane-will-468518-d0.iam.gserviceaccount.com"
+}
+
+resource "google_secret_manager_secret_iam_member" "tavily_access" {
+  secret_id = "projects/propane-will-468518-d0/secrets/TAVILY_API_KEY"
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:github-sync-bucket-reader@propane-will-468518-d0.iam.gserviceaccount.com"
 }

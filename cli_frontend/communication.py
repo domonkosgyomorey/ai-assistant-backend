@@ -22,6 +22,7 @@ class Communication:
 
         if raw_response.status_code == HTTPStatus.OK:
             response: dict = raw_response.json()
+            print(response)
             answer = str(response.get("response", "Empty"))
             self.conversations["messages"].append(
                 {"text": answer, "type": str(MessageType.RESPONSE), "time": get_time()}

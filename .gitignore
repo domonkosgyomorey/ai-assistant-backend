@@ -1,5 +1,8 @@
 /terraform/dev/.terraform
-
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
 # Exclude models
 models/
 
@@ -205,3 +208,5 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+terraform/dev/terraform.tfstate
+terraform/dev/terraform.tfstate.backup

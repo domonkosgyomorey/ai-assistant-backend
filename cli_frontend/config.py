@@ -1,3 +1,3 @@
 class Config:
     CONV_SAVE_FILE: str = "conv.json"
-    ENDPOINT: str = "http://localhost:8080/"
+    ENDPOINT: str = "http://localhost:8081/knowledge"

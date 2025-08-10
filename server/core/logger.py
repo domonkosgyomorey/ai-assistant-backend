@@ -1,9 +1,9 @@
 import logging
 from logging.config import dictConfig
 
-from utils.config import Config, Environment
+from core.config import ENVIRONMENT, config
 
-debug_level_env = [Environment.GIT_HUB, Environment.LOCAL]
+debug_level_env = [ENVIRONMENT.GITHUB, ENVIRONMENT.LOCAL]
 
 LOGGING_CONFIG = {
     "version": 1,
@@ -18,14 +18,14 @@ LOGGING_CONFIG = {
         "console": {
             "class": "logging.StreamHandler",
             "formatter": "default",
-            "level": "DEBUG" if Config.ENVIRONMENT in debug_level_env else "INFO",
+            "level": "DEBUG" if config.environment in debug_level_env else "INFO",
             "stream": "ext://sys.stdout",
         },
         "file": {
             "class": "logging.FileHandler",
             "formatter": "json",
             "filename": "app.log",
-            "level": "DEBUG" if Config.ENVIRONMENT in debug_level_env else "INFO",
+            "level": "DEBUG" if config.environment in debug_level_env else "INFO",
             "encoding": "utf-8",
         },
     },

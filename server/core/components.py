@@ -1,6 +1,6 @@
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from core.config import Config
 from langchain_community.llms.llamacpp import LlamaCpp
-from utils.config import Config
+from langchain_huggingface import HuggingFaceEmbeddings
 
 
 def get_llm():
