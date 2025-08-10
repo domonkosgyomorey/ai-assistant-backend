@@ -1,8 +1,4 @@
-import os
-
-from dotenv import load_dotenv
-
-load_dotenv()
+from ingestion.utils.gcp_secret import get_secret
 
 
 class SplitterConfig:
@@ -11,7 +7,7 @@ class SplitterConfig:
 
 
 class MongoConfig:
-    URI: str = os.environ["MONGO_URI"]
+    URI: str = get_secret("MONGO_URI")
     DB_NAME: str = "assistant"
     COLLECTION_NAME: str = "knowledge"
     VECTOR_SRACH_INDEX_NAME: str = "embedding"
