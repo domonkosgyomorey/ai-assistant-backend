@@ -67,4 +67,4 @@ jobs:
           fi
       - name: Run sync pipeline
         run: |
-          uv run -- python ingestion.sync_pipeline ${{ steps.set_flag.outputs.clear_collection_before }} ${{ steps.set_flag.outputs.use_existing_collection }}
+          uv run -- python -m ingestion.sync_pipeline ${{ steps.set_flag.outputs.clear_collection_before }} ${{ steps.set_flag.outputs.use_existing_collection }}
