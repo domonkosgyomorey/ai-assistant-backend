@@ -1,7 +1,9 @@
 from typing import Tuple
 
 from langchain.embeddings.base import Embeddings
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_google_vertexai.embeddings import VertexAIEmbeddings
+
+from ingestion.config import config
 
 
 def get_embeddings() -> Tuple[Embeddings, int]:
@@ -9,6 +11,8 @@ def get_embeddings() -> Tuple[Embeddings, int]:
     Returns the embedding and the embedding dimension.
     """
 
-    model = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+    model = VertexAIEmbeddings(
+        model_name=config.embedding,
+    )
     embedding_dim = len(model.embed_query("test"))
     return model, embedding_dim

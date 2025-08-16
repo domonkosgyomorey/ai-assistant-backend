@@ -1,3 +1,8 @@
+import os
+import sys
+
+sys.path.append(os.path.join(os.getcwd(), os.path.abspath(__file__)))
+
 import tempfile
 from argparse import ArgumentParser
 
