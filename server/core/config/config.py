@@ -1,8 +1,8 @@
 import os
 from enum import StrEnum
 
-from core.gcp_secret import get_secret
-from core.safe_utils import _safe_join
+from core.utils.gcp_secret import get_secret
+from core.utils.safe_utils import _safe_join
 
 CWD = os.path.abspath(os.getcwd())
 

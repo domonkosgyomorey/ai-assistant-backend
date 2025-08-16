@@ -1,7 +1,7 @@
 import logging
 from logging.config import dictConfig
 
-from core.config import ENVIRONMENT, config
+from core.config.config import ENVIRONMENT, config
 
 debug_level_env = [ENVIRONMENT.GITHUB, ENVIRONMENT.LOCAL]
 

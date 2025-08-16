@@ -18,7 +18,7 @@ resource "google_project_service" "enable_apis" {
     "aiplatform.googleapis.com",
     "storage.googleapis.com",
     "iam.googleapis.com",
-    "secretmanager.googleapis.com"   # Add this line
+    "secretmanager.googleapis.com"
   ])
 
   project = "propane-will-468518-d0"
@@ -29,7 +29,7 @@ resource "google_storage_bucket" "knowledge_docs" {
   name                        = "ai-assistant-dev-docs"
   location                    = "us-central1"
   project                     = "propane-will-468518-d0"
-  force_destroy               = false  # Prevents deletion if not empty
+  force_destroy               = false
   uniform_bucket_level_access = true
 
   versioning {
@@ -57,26 +57,26 @@ resource "google_project_service" "secret_manager" {
 }
 
 # Service account for GitHub Actions
-resource "google_service_account" "github_sync_sa" {
-  account_id   = "github-sync-bucket-reader"
-  display_name = "GitHub Actions - Sync Pipeline Bucket Reader"
+resource "google_service_account" "github_sa" {
+  account_id   = "github-sa"
+  display_name = "GitHub Actions SA"
 }
 
 # Give it read access to the bucket
 resource "google_storage_bucket_iam_member" "bucket_reader" {
   bucket = google_storage_bucket.knowledge_docs.name
   role   = "roles/storage.objectViewer"
-  member = "serviceAccount:github-sync-bucket-reader@propane-will-468518-d0.iam.gserviceaccount.com"
+  member = "serviceAccount:github-sa@propane-will-468518-d0.iam.gserviceaccount.com"
 }
 
 # Create a key for the service account
-resource "google_service_account_key" "github_sync_sa_key" {
-  service_account_id = google_service_account.github_sync_sa.name
+resource "google_service_account_key" "github_sa_key" {
+  service_account_id = google_service_account.github_sa.name
 }
 
 # Store the key JSON in Secret Manager
-resource "google_secret_manager_secret" "github_sync_sa_secret" {
-  secret_id = "github-sync-sa-key"
+resource "google_secret_manager_secret" "github_sa_secret" {
+  secret_id = "github-sa-key"
 
   replication {
     auto {}
@@ -84,20 +84,20 @@ resource "google_secret_manager_secret" "github_sync_sa_secret" {
 
 }
 
-resource "google_secret_manager_secret_version" "github_sync_sa_secret_version" {
-  secret      = google_secret_manager_secret.github_sync_sa_secret.id
-  secret_data = google_service_account_key.github_sync_sa_key.private_key
+resource "google_secret_manager_secret_version" "github_sa_secret_version" {
+  secret      = google_secret_manager_secret.github_sa_secret.id
+  secret_data = google_service_account_key.github_sa_key.private_key
 }
 
 
 resource "google_secret_manager_secret_iam_member" "mongo_access" {
   secret_id = "projects/propane-will-468518-d0/secrets/MONGO_URI"
   role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:github-sync-bucket-reader@propane-will-468518-d0.iam.gserviceaccount.com"
+  member    = "serviceAccount:github-sa@propane-will-468518-d0.iam.gserviceaccount.com"
 }
 
 resource "google_secret_manager_secret_iam_member" "tavily_access" {
   secret_id = "projects/propane-will-468518-d0/secrets/TAVILY_API_KEY"
   role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:github-sync-bucket-reader@propane-will-468518-d0.iam.gserviceaccount.com"
+  member    = "serviceAccount:github-sa@propane-will-468518-d0.iam.gserviceaccount.com"
 }

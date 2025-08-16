@@ -1,11 +1,8 @@
-from typing import Any
-
-from core.components import get_embedding
-from core.config import config
+from core.config.config import config
+from core.interfaces import BaseRetriever
 from core.logger import logger
+from core.utils.components import get_embedding
 from langchain.schema import Document
-from langchain_core.retrievers import RetrieverLike
-from langchain_core.runnables import RunnableConfig
 from langchain_mongodb.vectorstores import MongoDBAtlasVectorSearch
 from pymongo import MongoClient
 from pymongo.collection import Collection
@@ -38,19 +35,21 @@ def get_collection(db_name: str, collection_name: str) -> Collection:
         raise Exception("Collection with '{db_name}' name does not exists in the {db_name} database!")
 
 
-class MongoRetriever(RetrieverLike):
-    def __init__(self, collection_name: str, top_k: int):
+class MongoRetriever(BaseRetriever):
+    """MongoDB Atlas Vector Search implementation of BaseRetriever interface."""
+
+    def __init__(self, collection_name: str, top_k: int = 5):
         super().__init__()
         self.top_k = top_k
-        self.retriever = self.get_retriever(collection_name)
+        self.collection_name = collection_name
+        self.vector_store = self.get_retriever(collection_name)
 
-    def get_relevant_documents(self, query: str) -> list[Document]:
-        return self.retriever.similarity_search(query, k=self.top_k)
-
-    def invoke(self, input: str, config: RunnableConfig | None = None, **kwargs: Any) -> list[Document]:
-        return self.retriever.similarity_search(input, k=self.top_k)
+    def retrieve(self, query: str, k: int = 5, **kwargs) -> list[Document]:
+        """Implement BaseRetriever interface method."""
+        return self.vector_store.similarity_search(query, k=k)
 
     def get_retriever(self, collection_name: str) -> MongoDBAtlasVectorSearch:
+        """Create MongoDB Atlas Vector Search instance."""
         return MongoDBAtlasVectorSearch(
             collection=get_collection(config.mongo.DB_NAME, collection_name),
             embedding=get_embedding(),

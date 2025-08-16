@@ -1,44 +1,48 @@
 from contextlib import asynccontextmanager
 
-from bll.agents.knowledge import KnowledgeAgent
-from core.config import config
-from dal.mongo_db import MongoDB, MongoRetriever
+from api.common_types import RequestModel
+from bll.agents import NIKObudaKnowledgeAgent
+from dal.mongo_db import MongoDB
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from langchain_ollama import ChatOllama
-from pydantic import BaseModel
-
-
-class MessageRequest(BaseModel):
-    message: str
+from fastapi.responses import StreamingResponse
 
 
 @asynccontextmanager
-async def lifespan(app):
-    """Lifespan context manager for the FastAPI app."""
-    app.state.knowledge_agent = KnowledgeAgent(
-        chatllm=ChatOllama(model="llama3.2"),
-        agent_description="You are working with University Of Obuda.",
-        retriever=MongoRetriever(config.mongo.COLLECTION_NAME, top_k=5),
-    )
-
+async def lifespan(app: FastAPI):
+    app.state.db_client = MongoDB()
+    app.state.knowledge_agent = NIKObudaKnowledgeAgent()
     yield
-    MongoDB.close()
+    app.state.db_client.close()
 
 
 app = FastAPI(lifespan=lifespan)
 
-# CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for development; restrict in production
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all methods; restrict in production
-    allow_headers=["*"],  # Allow all headers; restrict in production
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
-@app.post("/knowledge")
-async def knowledge(request: MessageRequest):
-    response = await app.state.knowledge_agent.ainvoke(request.message)
-    return {"response": response}
+@app.post("/ask/stream")
+async def ask_question_stream(request: RequestModel):
+    """
+    Ask a question to the knowledge agent with streaming response.
+
+    Args:
+        request: The question request with structured input
+
+    Returns:
+        Streaming response with answer chunks
+    """
+
+    async def generate_response():
+        agent: NIKObudaKnowledgeAgent = app.state.knowledge_agent
+
+        async for chunk in agent.astream(request.question):
+            yield chunk
+
+    return StreamingResponse(generate_response())
