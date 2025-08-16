@@ -2,7 +2,6 @@ import os
 from enum import StrEnum
 
 from core.utils.gcp_secret import get_secret
-from core.utils.safe_utils import _safe_join
 
 CWD = os.path.abspath(os.getcwd())
 
@@ -27,11 +26,6 @@ class GCPConfig:
     PREFIX: str = ""
 
 
-class LLMConfig:
-    LLM_FILE_NAME = "openchat_3.5.Q4_K_M.gguf"
-    LLM_PATH = _safe_join(CWD, "models", LLM_FILE_NAME)
-
-
 class Tavily:
     API_KEY = get_secret("TAVILY_API_KEY")
 
@@ -39,7 +33,8 @@ class Tavily:
 class Config:
     mongo: MongoConfig = MongoConfig()
     gcp: GCPConfig = GCPConfig()
-    llm: LLMConfig = LLMConfig()
+    llm: str = "gemini-2.0"
+    embedding: str = "gemini-embedding-001"
     tavily: Tavily = Tavily()
     environment: ENVIRONMENT = ENVIRONMENT.LOCAL
 

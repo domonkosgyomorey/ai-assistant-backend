@@ -2,7 +2,7 @@ from datetime import datetime
 
 
 def create_simple_payload(message: str) -> dict:
-    return {"message": message}
+    return {"question": message}
 
 
 def get_time() -> str:

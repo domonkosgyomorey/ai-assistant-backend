@@ -101,3 +101,9 @@ resource "google_secret_manager_secret_iam_member" "tavily_access" {
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:github-sa@propane-will-468518-d0.iam.gserviceaccount.com"
 }
+
+resource "google_project_iam_member" "github_vertex_ai" {
+  project = "propane-will-468518-d0"
+  role    = "roles/aiplatform.user"
+  member  = "serviceAccount:github-sa@propane-will-468518-d0.iam.gserviceaccount.com"
+}

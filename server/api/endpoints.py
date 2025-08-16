@@ -29,16 +29,6 @@ app.add_middleware(
 
 @app.post("/ask/stream")
 async def ask_question_stream(request: RequestModel):
-    """
-    Ask a question to the knowledge agent with streaming response.
-
-    Args:
-        request: The question request with structured input
-
-    Returns:
-        Streaming response with answer chunks
-    """
-
     async def generate_response():
         agent: NIKObudaKnowledgeAgent = app.state.knowledge_agent
 
