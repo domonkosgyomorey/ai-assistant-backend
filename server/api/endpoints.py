@@ -2,7 +2,6 @@ from contextlib import asynccontextmanager
 
 from api.common_types import RequestModel
 from bll.agents.knowledge import Knowledge
-from core.logger import logger
 from dal.mongo_db import MongoDB
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -33,14 +32,11 @@ async def ask_question_stream(request: RequestModel):
     async def generate_response():
         agent: Knowledge = app.state.knowledge_agent
 
-        # Convert to LangChain message format
         langchain_messages = [msg.to_langchain_message() for msg in request.messages]
 
         async for chunk in agent.astream({"messages": langchain_messages}):
             if isinstance(chunk, dict) and "answer" in chunk:
-                # Only stream the answer content
                 answer = chunk["answer"]
-                logger.debug(f"Streaming chunk: {answer}")
                 if hasattr(answer, "content"):
                     yield answer.content
                 else:

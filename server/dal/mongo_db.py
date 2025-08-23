@@ -38,15 +38,20 @@ def get_collection(db_name: str, collection_name: str) -> Collection:
 class MongoRetriever(BaseRetriever):
     """MongoDB Atlas Vector Search implementation of BaseRetriever interface."""
 
-    def __init__(self, collection_name: str, top_k: int = 5):
+    def __init__(self, collection_name: str, top_k: int = 5, relevance_tolerance: float = 0.4):
         super().__init__()
         self.top_k = top_k
         self.collection_name = collection_name
+        self.relevance_tolerance = relevance_tolerance
         self.vector_store = self.get_retriever(collection_name)
 
     def retrieve(self, query: str, k: int = 5, **kwargs) -> list[Document]:
         """Implement BaseRetriever interface method."""
-        return self.vector_store.similarity_search(query, k=k)
+        docs_n_scores = self.vector_store.similarity_search_with_relevance_scores(query, k=k)
+        logger.info(
+            f"Retrieved from MongoDB: {[doc.metadata['file_path'] + ' : ' + str(score) for doc, score in docs_n_scores]}"
+        )
+        return [doc for doc, _ in docs_n_scores if _ > self.relevance_tolerance]
 
     def get_retriever(self, collection_name: str) -> MongoDBAtlasVectorSearch:
         """Create MongoDB Atlas Vector Search instance."""

@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Any, AsyncGenerator, Generator
 
 from core.config.config import config
+from core.logger import logger
 from langchain_core.language_models import BaseLanguageModel
 
 
@@ -45,7 +46,7 @@ class BaseAgent(ABC):
                 return result
             return {"content": str(result)}
         except Exception as e:
-            self._log(f"Error in invoke: {str(e)}")
+            logger.error(f"Error in invoke: {str(e)}")
             return {"error": str(e), "content": f"I encountered an error while processing your request: {str(e)}"}
 
     async def ainvoke(self, input_data: dict[str, Any]) -> dict[str, Any]:
@@ -64,7 +65,7 @@ class BaseAgent(ABC):
                 return result
             return {"content": str(result)}
         except Exception as e:
-            self._log(f"Error in ainvoke: {str(e)}")
+            logger.error(f"Error in ainvoke: {str(e)}")
             return {"error": str(e), "content": f"I encountered an error while processing your request: {str(e)}"}
 
     def stream(self, input_data: dict[str, Any]) -> Generator[dict[str, Any], None, None]:
@@ -84,7 +85,7 @@ class BaseAgent(ABC):
                 else:
                     yield {"content": str(chunk)}
         except Exception as e:
-            self._log(f"Error in stream: {str(e)}")
+            logger.error(f"Error in stream: {str(e)}")
             yield {"error": str(e), "content": f"Error: {str(e)}"}
 
     async def astream(self, input_data: dict[str, Any]) -> AsyncGenerator[dict[str, Any], None]:
@@ -104,5 +105,5 @@ class BaseAgent(ABC):
                 else:
                     yield {"content": str(chunk)}
         except Exception as e:
-            self._log(f"Error in astream: {str(e)}")
+            logger.error(f"Error in astream: {str(e)}")
             yield {"error": str(e), "content": f"Error: {str(e)}"}

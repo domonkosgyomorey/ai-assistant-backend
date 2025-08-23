@@ -15,7 +15,6 @@ jobs:
         with:
           python-version: '3.13'
 
-
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@v6.6.0
 

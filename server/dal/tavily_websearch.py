@@ -1,23 +1,38 @@
 from core.config.config import config
+from core.interfaces import BaseRetriever
 from langchain_core.documents import Document
-from langchain_core.retrievers import RetrieverLike
 from tavily import TavilyClient
 
 
-class TavilyRetriever(RetrieverLike):
-    def __init__(self, include_domains: list[str] | None = None, exclude_domains: list[str] | None = None):
-        self.client = TavilyClient(
-            api_key=config.tavily.API_KEY, include_domains=include_domains, exclude_domains=exclude_domains
-        )
+class TavilyRetriever(BaseRetriever):
+    def __init__(
+        self,
+        include_domains: list[str] | None = None,
+        exclude_domains: list[str] | None = None,
+        relevance_tolerance: float = 0.4,
+    ):
+        self.include_domains = include_domains
+        self.exclude_domains = exclude_domains
+        self.client = TavilyClient(api_key=config.tavily.API_KEY)
+        self.relevance_tolerance = relevance_tolerance
 
     def retrieve(self, query: str, k: int = 3, **kwargs) -> list[Document]:
-        response = self.client.search(query=query, max_results=k, **kwargs)
+        response = self.client.search(
+            query=query,
+            max_results=k,
+            include_domains=self.include_domains,
+            exclude_domains=self.exclude_domains,
+            **kwargs,
+        )
         results = response.get("results", [])
-        docs = []
+        docs: list[Document] = []
         for item in results:
             content = item.get("content", "")
             url = item.get("url", "")
             title = item.get("title", "")
-            metadata = {"source": url, "title": title}
-            docs.append(Document(page_content=content, metadata=metadata))
+            score = item.get("score", 0)
+            metadata = {"source": url, "title": title, "score": score}
+            if score > self.relevance_tolerance:
+                docs.append(Document(page_content=content, metadata=metadata))
+
         return docs

@@ -10,5 +10,11 @@ class ContextualizerAgent(BaseAgent):
     def __init__(self):
         super().__init__(get_llm(), verbose=True)
 
+    def _contextualize(self, input_dict) -> str:
+        return StrOutputParser().invoke(self.llm.invoke(CONTEXTUALIZER_PROMPT.format_prompt(input_dict)))
+
+    def _process_input(self, input_dict) -> str:
+        return input_dict["prompt"] if len(input_dict.get("history", "")) == 0 else self._contextualize(input_dict)
+
     def _build_chain(self):
-        return RunnablePassthrough.assign(contextual_prompt=CONTEXTUALIZER_PROMPT | self.llm | StrOutputParser())
+        return RunnablePassthrough.assign(contextual_prompt=self._process_input)

@@ -4,6 +4,7 @@ from bll.agents.base_agent import BaseAgent
 from bll.agents.contextualizer_agent import ContextualizerAgent
 from bll.agents.knowledge_agent.prompts import KNOWLEDGE_SYSTEM_PROMPT
 from core.interfaces import BaseRetriever
+from core.logger import logger
 from core.models.models import RelevanceDecision
 from langchain.schema import Document
 from langchain_core.language_models import BaseLanguageModel
@@ -51,6 +52,8 @@ class KnowledgeAgent(BaseAgent):
         self.web_max_k = web_max_k
         self.web_supplement_k = web_supplement_k
 
+        self.db_docs_min_tolerance = 1
+
         self.contextualizer = ContextualizerAgent()
 
         super().__init__(llm, verbose)
@@ -65,23 +68,13 @@ class KnowledgeAgent(BaseAgent):
 
     def _retrieve_db_docs(self, input_dict: dict) -> dict:
         """Retrieve documents from the database."""
-        print("Retrieving documents from the database..., input_dict: ", input_dict)
         query = input_dict["contextual_prompt"]
         docs = self.db_retriever.retrieve(
             query=query,
             k=self.db_top_k,
         )
-        self._log(f"Retrieved {len(docs)} docs from database")
-        self._log("Documents", docs)
+        logger.debug(f"Retrieved {len(docs)} docs from database")
         return input_dict | {"db_docs": docs}
-
-    def _check_relevance(self, input_dict: dict) -> dict:
-        """Check if retrieved documents are relevant to the query."""
-        query = input_dict["contextual_prompt"]
-        docs = input_dict["db_docs"]
-        decision = self.relevance_checker(docs, query)
-        self._log("Relevance decision", {"relevant": decision.relevant, "reason": decision.reason})
-        return input_dict | {"relevance_decision": decision}
 
     def _conditional_web_search(self, input_dict: dict) -> dict:
         """Conditionally perform web search based on relevance and configuration."""
@@ -89,18 +82,20 @@ class KnowledgeAgent(BaseAgent):
 
         if self.web_search_retriever:
             query = input_dict["contextual_prompt"]
-            decision = input_dict["relevance_decision"]
+            db_docs = input_dict["db_docs"]
 
-            if decision.relevant:
+            if len(db_docs) >= self.db_docs_min_tolerance:
                 web_k = min(self.web_supplement_k, self.web_max_k)
-                self._log(f"Supplementing with {web_k} web results")
             else:
                 web_k = self.web_max_k
-                self._log(f"DB docs not relevant, using {web_k} web results")
+                logger.debug(f"DB docs not relevant, using {web_k} web results")
 
             web_docs = self.web_search_retriever.retrieve(query, k=web_k)
-            self._log(f"Retrieved {len(web_docs)} web docs")
+            logger.debug(f"Retrieved {len(web_docs)} web docs")
 
+        logger.debug(
+            f"Tavily retrieved docs: {[str(doc.metadata['source']) + ' : ' + str(doc.metadata['score']) for doc in web_docs]}"
+        )
         return input_dict | {"web_docs": web_docs}
 
     def _merge_context(self, input_dict: dict) -> dict:
@@ -122,12 +117,13 @@ class KnowledgeAgent(BaseAgent):
 
         context_parts = []
         for doc in all_docs:
-            source_type = doc.metadata["type"]
-            source_info = doc.metadata.get("source", doc.metadata.get("url", "Unknown source"))
-            context_parts.append(f"[{source_type.upper()} - {source_info}]\n{doc.page_content}")
+            source_type: str = doc.metadata["type"]
+            source_info: str = str(doc.metadata.get("source"))
+            if source_type == "internal":
+                source_info += f"#page={doc.metadata.get('page_number', 1)}"
+            context_parts.append(f"[{source_type.upper()}]\n{doc.page_content}\nReference: {source_info}")
 
-        merged_context = "\n\n---\n\n".join(context_parts)
-        self._log(f"Merged context from {len(all_docs)} total documents")
+        merged_context: str = "\n\n---\n\n".join(context_parts)
 
         return input_dict | {
             "context": merged_context,
@@ -156,7 +152,6 @@ class KnowledgeAgent(BaseAgent):
             RunnableLambda(self._transform_input)
             | RunnableLambda(lambda input: self.contextualizer.chain.invoke(input))
             | RunnableLambda(self._retrieve_db_docs)
-            | RunnableLambda(self._check_relevance)
             | RunnableLambda(self._conditional_web_search)
             | RunnableLambda(self._merge_context)
             | RunnablePassthrough.assign(

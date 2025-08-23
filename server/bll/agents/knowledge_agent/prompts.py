@@ -12,17 +12,24 @@ Guidelines:
 - If the data context includes contradictions you must resolve them if possible, if not provide the contradictions to the user.
 - Give explanation and context to your answers,
 - If you're unsure, say so
-- Cite sources when relevant
 - Keep responses concise but complete
+- Provide the output with markdown formatting
+- Cite sources when relevant
+- Include the relevant sources at the end in a bullet point format
+- Use the user's language in your response
 
 **Data Context**:
 {context}
 
+
 **Conversation history**:
 {history}
+
 
 **Recent user prompt**:
 {contextual_prompt}
 
-**Answer**:"""
+
+**Answer**:
+"""
 )
