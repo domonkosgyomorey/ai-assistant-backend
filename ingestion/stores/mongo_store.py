@@ -43,7 +43,7 @@ class MongoAtlasVectorStore(DocumentStore):
         self.vector_store = MongoDBAtlasVectorSearch(
             collection=self.collection,
             embedding=embedding,
-            index_name=config.mongo.VECTOR_SRACH_INDEX_NAME,
+            index_name=config.mongo.VECTOR_SEARCH_INDEX_NAME,
             relevance_score_fn="cosine",
         )
 
