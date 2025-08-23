@@ -277,7 +277,7 @@ Documents are processed into a standardized format:
 ```python
 @dataclass
 class CustomDocument:
-    file_path: str           # Original file path/identifier
+    source: str           # Original file source
     title: str              # Document title (from metadata)
     content: str            # Extracted text content
     short_description: str  # Document description

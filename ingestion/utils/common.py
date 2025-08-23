@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 @dataclass
 class CustomDocument:
-    file_path: str
+    source: str
     title: str
     content: str
     short_description: str

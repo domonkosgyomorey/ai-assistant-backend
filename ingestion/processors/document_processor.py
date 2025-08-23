@@ -28,7 +28,7 @@ class DocumentProcessorImpl(DocumentProcessor):
             Document(
                 page_content=doc.content,
                 metadata={
-                    "file_path": doc.file_path,
+                    "source": doc.source,
                     "title": doc.title,
                     "page_number": doc.page_number,
                     "page_count": doc.page_count,
