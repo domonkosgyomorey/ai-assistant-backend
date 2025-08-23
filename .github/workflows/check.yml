@@ -1,0 +1,27 @@
+name: Syntax Check
+
+on:
+  push
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5.0.0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5.6.0
+        with:
+          python-version: '3.13'
+
+
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v6.6.0
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Run syntax check
+        run: |
+          ruff check .
