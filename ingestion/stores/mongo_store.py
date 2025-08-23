@@ -83,9 +83,9 @@ class MongoAtlasVectorStore(DocumentStore):
 
     def list_source_keys(self) -> list[str]:
         pipeline = [
-            {"$group": {"_id": "$file_path"}},  # Group by file_path in metadata
-            {"$project": {"file_path": "$_id", "_id": 0}},  # Project only the file_path field
+            {"$group": {"_id": "$source"}},  # Group by source in metadata
+            {"$project": {"source": "$_id", "_id": 0}},  # Project only the source field
         ]
 
         result = self.collection.aggregate(pipeline)
-        return [doc["file_path"] for doc in result]
+        return [doc["source"] for doc in result]

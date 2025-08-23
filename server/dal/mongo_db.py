@@ -49,7 +49,7 @@ class MongoRetriever(BaseRetriever):
         """Implement BaseRetriever interface method."""
         docs_n_scores = self.vector_store.similarity_search_with_relevance_scores(query, k=k)
         logger.info(
-            f"Retrieved from MongoDB: {[doc.metadata['file_path'] + ' : ' + str(score) for doc, score in docs_n_scores]}"
+            f"Retrieved from MongoDB: {[doc.metadata['source'] + ' : ' + str(score) for doc, score in docs_n_scores]}"
         )
         return [doc for doc, _ in docs_n_scores if _ > self.relevance_tolerance]
 
