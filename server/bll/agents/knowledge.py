@@ -4,7 +4,6 @@ from dal.mongo_db import MongoRetriever
 from dal.tavily_websearch import TavilyRetriever
 
 from bll.agents.knowledge_agent.knowledge_agent import KnowledgeAgent
-from bll.services.relevance_service import create_structured_relevance_checker
 
 
 class Knowledge(KnowledgeAgent):
@@ -23,7 +22,6 @@ class Knowledge(KnowledgeAgent):
                     "hu.wikipedia.org",
                 ],
             ),
-            relevance_checker=create_structured_relevance_checker(get_llm()),
             db_top_k=6,
             web_max_k=3,
             web_supplement_k=2,

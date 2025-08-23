@@ -1,12 +1,8 @@
-from typing import Callable
-
 from bll.agents.base_agent import BaseAgent
 from bll.agents.contextualizer_agent import ContextualizerAgent
 from bll.agents.knowledge_agent.prompts import KNOWLEDGE_SYSTEM_PROMPT
 from core.interfaces import BaseRetriever
 from core.logger import logger
-from core.models.models import RelevanceDecision
-from langchain.schema import Document
 from langchain_core.language_models import BaseLanguageModel
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
@@ -23,7 +19,6 @@ class KnowledgeAgent(BaseAgent):
         llm: BaseLanguageModel,
         domain_context: str,
         db_retriever: BaseRetriever,
-        relevance_checker: Callable[[list[Document], str], RelevanceDecision],
         web_search_retriever: BaseRetriever | None = None,
         db_top_k: int = 5,
         web_max_k: int = 5,
@@ -37,7 +32,6 @@ class KnowledgeAgent(BaseAgent):
             llm: LangChain-compatible language model
             domain_context: Required domain context for the agent
             db_retriever: Enhanced database retriever
-            relevance_checker: Function to check document relevance
             web_search_retriever: Optional web search retriever
             db_top_k: Number of top documents to retrieve from the database
             web_max_k: Maximum number of web search results to retrieve
@@ -46,7 +40,6 @@ class KnowledgeAgent(BaseAgent):
         """
         self.domain_context = domain_context
         self.db_retriever = db_retriever
-        self.relevance_checker = relevance_checker
         self.web_search_retriever = web_search_retriever
         self.db_top_k = db_top_k
         self.web_max_k = web_max_k
