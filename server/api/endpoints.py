@@ -1,7 +1,8 @@
 from contextlib import asynccontextmanager
 
 from api.common_types import RequestModel
-from bll.agents import NIKObudaKnowledgeAgent
+from bll.agents.knowledge import Knowledge
+from core.logger import logger
 from dal.mongo_db import MongoDB
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,7 +12,7 @@ from fastapi.responses import StreamingResponse
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.db_client = MongoDB()
-    app.state.knowledge_agent = NIKObudaKnowledgeAgent()
+    app.state.knowledge_agent = Knowledge()
     yield
     app.state.db_client.close()
 
@@ -30,9 +31,19 @@ app.add_middleware(
 @app.post("/ask/stream")
 async def ask_question_stream(request: RequestModel):
     async def generate_response():
-        agent: NIKObudaKnowledgeAgent = app.state.knowledge_agent
+        agent: Knowledge = app.state.knowledge_agent
 
-        async for chunk in agent.astream(request.question):
-            yield chunk
+        # Convert to LangChain message format
+        langchain_messages = [msg.to_langchain_message() for msg in request.messages]
 
-    return StreamingResponse(generate_response())
+        async for chunk in agent.astream({"messages": langchain_messages}):
+            if isinstance(chunk, dict) and "answer" in chunk:
+                # Only stream the answer content
+                answer = chunk["answer"]
+                logger.debug(f"Streaming chunk: {answer}")
+                if hasattr(answer, "content"):
+                    yield answer.content
+                else:
+                    yield str(answer)
+
+    return StreamingResponse(generate_response(), media_type="text/plain; charset=utf-8")

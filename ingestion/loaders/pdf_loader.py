@@ -21,7 +21,7 @@ class PDFLoader(DocumentLoader):
             pages_docs.append(
                 CustomDocument(
                     content=content,
-                    file_path=os.path.basename(path),
+                    source=os.path.basename(path),
                     title=title,
                     page_number=i + 1,
                     page_count=page_count,

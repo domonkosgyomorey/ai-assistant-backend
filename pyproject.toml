@@ -22,6 +22,8 @@ dev = [
     "uvicorn==0.35.0",
     "tavily-python==0.7.10",
     "langchain-google-vertexai==2.0.28",
+    "langgraph==0.6.5",
+    "langfuse==3.3.0",
     {include-group = "ingestion"},
 ]
 

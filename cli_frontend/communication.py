@@ -6,7 +6,7 @@ from colorama import Fore
 from common_types import MessageType
 from config import Config
 from safe_utils import safe_open
-from utils import create_simple_payload, get_time, num_of_bytes
+from utils import create_message_payload, get_time, num_of_bytes
 
 
 class Communication:
@@ -15,12 +15,47 @@ class Communication:
         self.history: deque = deque(maxlen=self.conv_hist_size)
         self.conversations: dict = {"messages": []}
 
+    def _validate_message_sequence(self, messages: list) -> bool:
+        """Validate that messages alternate between user and assistant and end with user message."""
+        if not messages:
+            return False
+
+        # Must end with user message
+        if messages[-1]["role"] != "user":
+            return False
+
+        # Check alternating pattern
+        for i in range(1, len(messages)):
+            current_role = messages[i]["role"]
+            previous_role = messages[i - 1]["role"]
+
+            # Messages should alternate
+            if current_role == previous_role:
+                return False
+
+        return True
+
     def send_message(self, message: str) -> str:
         """Send a message to the server and handle streaming response with detailed output."""
         # Record the request
         self.conversations["messages"].append({"text": message, "type": str(MessageType.REQUEST), "time": get_time()})
 
-        payload = create_simple_payload(message)
+        # Convert conversation history to the expected message format
+        # Ensure we maintain proper alternating order: user -> assistant -> user -> assistant...
+        messages = []
+        for msg in self.conversations["messages"]:
+            if msg["type"] == str(MessageType.REQUEST):
+                messages.append({"role": "user", "content": msg["text"]})
+            elif msg["type"] == str(MessageType.RESPONSE):
+                messages.append({"role": "assistant", "content": msg["text"]})
+
+        # Ensure the sequence ends with user message (which it should since we just added one)
+        if not self._validate_message_sequence(messages):
+            raise ValueError(
+                "Invalid message sequence: messages must alternate between user and assistant and end with user message"
+            )
+
+        payload = create_message_payload(messages)
 
         # Display request information
         print(f"{Fore.BLUE}📤 Sending request to: {Fore.CYAN}{Config.ENDPOINT}{Fore.RESET}")
@@ -37,10 +72,21 @@ class Communication:
             full_response = ""
             print(f"[{Fore.GREEN}AI{Fore.RESET}]: ", end="", flush=True)
 
-            for chunk in response.iter_content(chunk_size=1, decode_unicode=True):
+            # Use response.iter_content with proper text handling
+            response.encoding = "utf-8"  # Ensure proper encoding
+            for chunk in response.iter_content(chunk_size=1, decode_unicode=False):
                 if chunk:
-                    print(chunk, end="", flush=True)
-                    full_response += chunk
+                    # Decode bytes to string if necessary
+                    if isinstance(chunk, bytes):
+                        try:
+                            chunk_str = chunk.decode("utf-8")
+                        except UnicodeDecodeError:
+                            chunk_str = chunk.decode("utf-8", errors="ignore")
+                    else:
+                        chunk_str = str(chunk)
+
+                    print(chunk_str, end="", flush=True)
+                    full_response += chunk_str
 
             print()  # New line after streaming is complete
 

@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Any, AsyncGenerator, Generator
 
+from core.config.config import config
 from langchain_core.language_models import BaseLanguageModel
-from langchain_core.runnables import Runnable
 
 
 class BaseAgent(ABC):
@@ -14,10 +14,10 @@ class BaseAgent(ABC):
     def __init__(self, llm: BaseLanguageModel, verbose: bool = False):
         self.llm = llm
         self.verbose = verbose
-        self.chain: Runnable = self._build_chain()
+        self.chain = self._build_chain()
 
     @abstractmethod
-    def _build_chain(self) -> Runnable:
+    def _build_chain(self):
         """Build the LangChain Runnable chain for this agent."""
         ...
 
@@ -29,78 +29,80 @@ class BaseAgent(ABC):
             else:
                 print(f"[{self.__class__.__name__}] {message}")
 
-    def invoke(self, query: str, **kwargs) -> str:
+    def invoke(self, input_data: dict[str, Any]) -> dict[str, Any]:
         """
         Synchronous invocation of the agent.
 
         Args:
-            query: The input query
-            **kwargs: Additional parameters
+            input_data: The input dictionary
 
         Returns:
-            The agent's response as a string
+            The agent's response as a dictionary
         """
         try:
-            input_dict = {"question": query, **kwargs}
-            result = self.chain.invoke(input_dict)
-            return str(result)
+            result = self.chain.invoke(input_data, config={"callbacks": [config.langfuse_handler]})
+            if isinstance(result, dict):
+                return result
+            return {"content": str(result)}
         except Exception as e:
             self._log(f"Error in invoke: {str(e)}")
-            return f"I encountered an error while processing your question: {str(e)}"
+            return {"error": str(e), "content": f"I encountered an error while processing your request: {str(e)}"}
 
-    async def ainvoke(self, query: str, **kwargs) -> str:
+    async def ainvoke(self, input_data: dict[str, Any]) -> dict[str, Any]:
         """
         Asynchronous invocation of the agent.
 
         Args:
-            query: The input query
-            **kwargs: Additional parameters
+            input_data: The input dictionary
 
         Returns:
-            The agent's response as a string
+            The agent's response as a dictionary
         """
         try:
-            input_dict = {"question": query, **kwargs}
-            result = await self.chain.ainvoke(input_dict)
-            return str(result)
+            result = await self.chain.ainvoke(input_data, config={"callbacks": [config.langfuse_handler]})
+            if isinstance(result, dict):
+                return result
+            return {"content": str(result)}
         except Exception as e:
             self._log(f"Error in ainvoke: {str(e)}")
-            return f"I encountered an error while processing your question: {str(e)}"
+            return {"error": str(e), "content": f"I encountered an error while processing your request: {str(e)}"}
 
-    def stream(self, query: str, **kwargs) -> Generator[str, None, None]:
+    def stream(self, input_data: dict[str, Any]) -> Generator[dict[str, Any], None, None]:
         """
         Stream the agent's response.
 
         Args:
-            query: The input query
-            **kwargs: Additional parameters
+            input_data: The input dictionary
 
         Yields:
-            Chunks of the agent's response
+            Chunks of the agent's response as dictionaries
         """
         try:
-            input_dict = {"question": query, **kwargs}
-            for chunk in self.chain.stream(input_dict):
-                yield str(chunk)
+            for chunk in self.chain.stream(input_data, config={"callbacks": [config.langfuse_handler]}):
+                if isinstance(chunk, dict):
+                    yield chunk
+                else:
+                    yield {"content": str(chunk)}
         except Exception as e:
             self._log(f"Error in stream: {str(e)}")
-            yield f"Error: {str(e)}"
+            yield {"error": str(e), "content": f"Error: {str(e)}"}
 
-    async def astream(self, query: str, **kwargs) -> AsyncGenerator[str, None]:
+    async def astream(self, input_data: dict[str, Any]) -> AsyncGenerator[dict[str, Any], None]:
         """
         Asynchronously stream the agent's response.
 
         Args:
-            query: The input query
-            **kwargs: Additional parameters
+            input_data: The input dictionary
 
         Yields:
-            Chunks of the agent's response
+            Chunks of the agent's response as dictionaries
         """
         try:
-            input_dict = {"question": query, **kwargs}
-            async for chunk in self.chain.astream(input_dict):
-                yield str(chunk)
+            async for chunk in self.chain.astream(input_data, config={"callbacks": [config.langfuse_handler]}):
+                if isinstance(chunk, dict):
+                    yield chunk
+                else:
+                    yield {"content": str(chunk)}
         except Exception as e:
             self._log(f"Error in astream: {str(e)}")
-            yield f"Error: {str(e)}"
+            yield {"error": str(e), "content": f"Error: {str(e)}"}

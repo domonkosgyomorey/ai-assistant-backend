@@ -2,6 +2,11 @@ import os
 from enum import StrEnum
 
 from core.utils.gcp_secret import get_secret
+from dotenv import load_dotenv
+from langfuse.langchain import CallbackHandler
+
+load_dotenv()
+
 
 CWD = os.path.abspath(os.getcwd())
 
@@ -33,10 +38,11 @@ class Tavily:
 class Config:
     mongo: MongoConfig = MongoConfig()
     gcp: GCPConfig = GCPConfig()
-    llm: str = "gemini-2.0"
+    llm: str = "gemini-2.0-flash-001"
     embedding: str = "gemini-embedding-001"
     tavily: Tavily = Tavily()
     environment: ENVIRONMENT = ENVIRONMENT.LOCAL
+    langfuse_handler = CallbackHandler(update_trace=True)
 
 
 config = Config()
