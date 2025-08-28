@@ -47,11 +47,12 @@ class MongoRetriever(BaseRetriever):
 
     def retrieve(self, query: str, k: int = 5, **kwargs) -> list[Document]:
         """Implement BaseRetriever interface method."""
-        docs_n_scores = self.vector_store.similarity_search_with_relevance_scores(query, k=k)
-        logger.info(
-            f"Retrieved from MongoDB: {[doc.metadata['source'] + ' : ' + str(score) for doc, score in docs_n_scores]}"
-        )
-        return [doc for doc, _ in docs_n_scores if _ > self.relevance_tolerance]
+        pipeline = [
+            {"$addFields": {"relevance_score": {"$meta": "vectorSearchScore"}}},
+            {"$match": {"relevance_score": {"$gte": self.relevance_tolerance}}},
+        ]
+
+        return self.vector_store.similarity_search(query, k=k, post_filter_pipeline=pipeline)
 
     def get_retriever(self, collection_name: str) -> MongoDBAtlasVectorSearch:
         """Create MongoDB Atlas Vector Search instance."""

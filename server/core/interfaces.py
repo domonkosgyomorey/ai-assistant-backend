@@ -4,11 +4,6 @@ from langchain.schema import Document
 
 
 class BaseRetriever(Protocol):
-    """
-    Database retriever interface for vector stores and local databases.
-    Used by MongoDB, SQLite, in-memory stores, etc.
-    """
-
     def retrieve(
         self,
         query: str,
