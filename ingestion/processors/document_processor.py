@@ -6,7 +6,6 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from ingestion.config import config
 from ingestion.interfaces import DocumentProcessor
 from ingestion.utils.common import CustomDocument
-from ingestion.utils.components import get_embeddings
 
 logger = logging.getLogger(__name__)
 
@@ -14,10 +13,9 @@ logger = logging.getLogger(__name__)
 class DocumentProcessorImpl(DocumentProcessor):
     def __init__(self):
         self.splitter = RecursiveCharacterTextSplitter(
-            embedding_function=get_embeddings(),
+            separators=["\n\n", "\n", ".", "?", "!", " ", ""],
             chunk_size=config.splitter.CHUNK_SIZE,
             chunk_overlap=0,
-            separators=["\n\n", "\n", ".", "?", "!", " ", ""],
         )
 
     def process(self, docs: list[CustomDocument]) -> list[Document]:
