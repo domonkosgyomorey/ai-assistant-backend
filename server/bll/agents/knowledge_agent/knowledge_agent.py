@@ -25,6 +25,7 @@ class KnowledgeAgent(BaseAgent):
         db_top_k: int = 5,
         web_max_k: int = 5,
         web_supplement_k: int = 2,
+        additional_instructions: str = "",
         verbose: bool = False,
     ):
         """
@@ -38,9 +39,11 @@ class KnowledgeAgent(BaseAgent):
             db_top_k: Number of top documents to retrieve from the database
             web_max_k: Maximum number of web search results to retrieve
             web_supplement_k: Number of web search results to use for supplementation
+            additional_instructions: Custom instructions to include in the system prompt
             verbose: Enable detailed logging
         """
         self.domain_context = domain_context
+        self.additional_instructions = additional_instructions
         self.db_retriever = db_retriever
         self.web_search_retriever = web_search_retriever
         self.db_top_k = db_top_k
@@ -61,7 +64,12 @@ class KnowledgeAgent(BaseAgent):
             [("User: " if isinstance(msg, HumanMessage) else "AI: ") + msg.content for msg in messages[:-1]]
         )
         del input_dict["messages"]
-        return input_dict | {"prompt": messages[-1].content, "history": history, "domain_context": self.domain_context}
+        return input_dict | {
+            "prompt": messages[-1].content,
+            "history": history,
+            "domain_context": self.domain_context,
+            "additional_instructions": self.additional_instructions,
+        }
 
     def _retrieve_db_docs(self, input_dict: dict) -> dict:
         """Retrieve documents from the database."""
@@ -87,7 +95,12 @@ class KnowledgeAgent(BaseAgent):
                 web_k = self.web_max_k
                 logger.debug(f"DB docs not relevant, using {web_k} web results")
 
-            web_docs = self.web_search_retriever.retrieve(query, k=web_k)
+            # Truncate query for web search to avoid API limits (Tavily has 400 char limit)
+            web_query = query[:400] if len(query) > 400 else query
+            if len(query) > 400:
+                logger.debug(f"Truncated web search query from {len(query)} to {len(web_query)} characters")
+
+            web_docs = self.web_search_retriever.retrieve(web_query, k=web_k)
             logger.debug(f"Retrieved {len(web_docs)} web docs")
 
         logger.debug(
@@ -121,8 +134,9 @@ class KnowledgeAgent(BaseAgent):
                 public_url = self.public_helper.extract_public_url_from_document(doc)
                 if public_url:
                     page_number = doc.metadata.get("page_number", 1)
+                    page_info = f"#page={page_number}"
                     full_url = f"{public_url}#page={page_number}"
-                    source_info = f"[{full_url}]({full_url})"
+                    source_info = f"[{source_info}{page_info}]({full_url})"
                 else:
                     source_info += f"#page={doc.metadata.get('page_number', 1)}"
 
@@ -152,6 +166,16 @@ class KnowledgeAgent(BaseAgent):
 
         return references
 
+    def _format_prompt_input(self, input_dict: dict) -> dict:
+        """Format the input for the KNOWLEDGE_SYSTEM_PROMPT."""
+        return {
+            "domain_context": self.domain_context,
+            "additional_instructions": self.additional_instructions,
+            "context": input_dict.get("context", ""),
+            "history": input_dict.get("history", ""),
+            "contextual_prompt": input_dict.get("contextual_prompt", ""),
+        }
+
     def _build_chain(self):
         chain = (
             RunnableLambda(self._transform_input)
@@ -160,7 +184,10 @@ class KnowledgeAgent(BaseAgent):
             | RunnableLambda(self._conditional_web_search)
             | RunnableLambda(self._merge_context)
             | RunnablePassthrough.assign(
-                answer=KNOWLEDGE_SYSTEM_PROMPT | self.llm | StrOutputParser(),
+                answer=RunnableLambda(self._format_prompt_input)
+                | KNOWLEDGE_SYSTEM_PROMPT
+                | self.llm
+                | StrOutputParser(),
             )
         )
         return chain

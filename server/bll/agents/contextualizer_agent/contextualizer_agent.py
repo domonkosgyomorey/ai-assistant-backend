@@ -11,7 +11,8 @@ class ContextualizerAgent(BaseAgent):
         super().__init__(get_llm(), verbose=True)
 
     def _contextualize(self, input_dict) -> str:
-        return StrOutputParser().invoke(self.llm.invoke(CONTEXTUALIZER_PROMPT.format_prompt(input_dict)))
+        formatted_prompt = CONTEXTUALIZER_PROMPT.format_prompt(**input_dict)
+        return StrOutputParser().invoke(self.llm.invoke(formatted_prompt))
 
     def _process_input(self, input_dict) -> str:
         return input_dict["prompt"] if len(input_dict.get("history", "")) == 0 else self._contextualize(input_dict)

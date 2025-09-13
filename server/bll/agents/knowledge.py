@@ -25,5 +25,12 @@ class Knowledge(KnowledgeAgent):
             db_top_k=6,
             web_max_k=3,
             web_supplement_k=2,
+            additional_instructions="""
+- When discussing academic requirements, reference specific systems (like NEPTUN)
+- Include information about deadlines, enrollment periods, and academic calendar
+- Mention relevant forms, applications, and administrative processes
+- Explain fee structures, payment methods, and financial aid options
+- Reference student rights, responsibilities, and academic policies
+            """,
             verbose=True,
         )
