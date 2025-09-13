@@ -4,7 +4,10 @@ import sys
 sys.path.append(os.path.join(os.getcwd(), os.path.abspath(__file__)))
 
 import tempfile
+import uuid
 from argparse import ArgumentParser
+
+from langchain_core.documents import Document
 
 from ingestion.config import config
 from ingestion.loaders.pdf_loader import PDFLoader
@@ -88,8 +91,27 @@ class SyncPipeline:
 
                 if self.upload_for_evaluation and self.document_uploader:
                     try:
-                        self.document_uploader.upload_documents(docs)
-                        logger.info(f"Successfully uploaded {len(docs)} documents for evaluation: {key}")
+                        base_filename = key.split("/")[-1].replace(".pdf", "").replace(".", "_")
+
+                        langchain_docs = []
+                        for doc_idx, doc in enumerate(docs):
+                            unique_id = f"{base_filename}_doc_{doc_idx}_{uuid.uuid4().hex[:8]}"
+
+                            langchain_doc = Document(
+                                page_content=doc.content,
+                                metadata={
+                                    "id": unique_id,
+                                    "source": doc.source,
+                                    "title": doc.title,
+                                    "short_description": doc.short_description,
+                                    "page_number": doc.page_number,
+                                    "page_count": doc.page_count,
+                                },
+                            )
+                            langchain_docs.append(langchain_doc)
+
+                        self.document_uploader.upload_documents(langchain_docs)
+                        logger.info(f"Successfully uploaded {len(langchain_docs)} documents for evaluation: {key}")
                     except Exception as e:
                         logger.error(f"Failed to upload documents for evaluation: {key}. Error: {e}")
 

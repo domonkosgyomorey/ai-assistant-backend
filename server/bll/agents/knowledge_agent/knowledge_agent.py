@@ -3,12 +3,11 @@ from bll.agents.contextualizer_agent import ContextualizerAgent
 from bll.agents.knowledge_agent.prompts import KNOWLEDGE_SYSTEM_PROMPT
 from core.interfaces import BaseRetriever
 from core.logger import logger
+from core.utils.public_document_helper import PublicDocumentHelper
 from langchain_core.language_models import BaseLanguageModel
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
-
-from server.utils.public_document_helper import PublicDocumentHelper
 
 
 class KnowledgeAgent(BaseAgent):
@@ -121,8 +120,9 @@ class KnowledgeAgent(BaseAgent):
             if source_type == "internal":
                 public_url = self.public_helper.extract_public_url_from_document(doc)
                 if public_url:
-                    page_info = f"#page={doc.metadata.get('page_number', 1)}"
-                    source_info = f"[{source_info}{page_info}]({public_url})"
+                    page_number = doc.metadata.get("page_number", 1)
+                    full_url = f"{public_url}#page={page_number}"
+                    source_info = f"[{full_url}]({full_url})"
                 else:
                     source_info += f"#page={doc.metadata.get('page_number', 1)}"
 

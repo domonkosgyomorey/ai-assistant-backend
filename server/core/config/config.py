@@ -28,6 +28,7 @@ class MongoConfig:
 
 class GCPConfig:
     BUCKET_NAME: str = "ai-assistant-dev-docs"
+    PUBLIC_BUCKET_NAME: str = "ai-assistant-public-docs"
     PREFIX: str = ""
 
 

@@ -18,7 +18,8 @@ resource "google_project_service" "enable_apis" {
     "aiplatform.googleapis.com",
     "storage.googleapis.com",
     "iam.googleapis.com",
-    "secretmanager.googleapis.com"
+    "secretmanager.googleapis.com",
+    "cloudresourcemanager.googleapis.com"
   ])
 
   project = "propane-will-468518-d0"

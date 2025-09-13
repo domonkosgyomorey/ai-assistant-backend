@@ -1,9 +1,8 @@
 from typing import List, Optional
 
+from core.config.config import config
+from core.utils.gcp_public_uploader import GCPPublicUploader
 from langchain_core.documents import Document
-
-from ingestion.config import config
-from ingestion.storage_fetchers.gcp_public_uploader import GCPPublicUploader
 
 
 class PublicDocumentHelper:
@@ -87,7 +86,7 @@ def format_source_with_link(document: Document) -> str:
     Format a source reference with a clickable link if available.
 
     Returns:
-        Formatted string like "Source: document.pdf (Page 5) - [View PDF](url)" or just "Source: document.pdf (Page 5)"
+        Formatted string like "Source: document.pdf (Page 5) - [View PDF](url#page=5)" or just "Source: document.pdf (Page 5)"
     """
     helper = PublicDocumentHelper()
     source_info = helper.get_viewable_source_info(document)
@@ -102,7 +101,10 @@ def format_source_with_link(document: Document) -> str:
         source_text += f"#page={page}"
 
     if public_url:
-        source_text = f"[{source_text}]({public_url})"
+        full_url = public_url
+        if page:
+            full_url += f"#page={page}"
+        source_text = f"[{source_text}]({full_url})"
 
     return source_text
 
