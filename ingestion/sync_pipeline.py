@@ -11,6 +11,7 @@ from ingestion.loaders.pdf_loader import PDFLoader
 from ingestion.processors.document_processor import DocumentProcessorImpl
 from ingestion.storage_fetchers.gcp_bucket_fetcher import GCPBucketFetcher
 from ingestion.storage_fetchers.gcp_document_uploader import GCPDocumentUploader
+from ingestion.storage_fetchers.gcp_public_uploader import GCPPublicUploader
 from ingestion.stores.mongo_store import MongoAtlasVectorStore
 from ingestion.utils.logger import logger
 
@@ -23,6 +24,7 @@ class SyncPipeline:
         use_existing_collection: bool,
         clear_collection_before: bool,
         upload_for_evaluation: bool = False,
+        upload_to_public: bool = True,
     ):
         self.fetcher = GCPBucketFetcher(bucket_name)
         self.store = MongoAtlasVectorStore(
@@ -39,6 +41,13 @@ class SyncPipeline:
         else:
             self.document_uploader = None
 
+        self.upload_to_public = upload_to_public
+        if self.upload_to_public:
+            self.public_uploader = GCPPublicUploader(config.gcp.PUBLIC_BUCKET_NAME)
+            self.public_uploader.ensure_bucket_is_public()
+        else:
+            self.public_uploader = None
+
     def sync(self):
         known_keys = self.store.list_source_keys()
         new_keys = self.fetcher.new_files(known_keys)
@@ -48,11 +57,32 @@ class SyncPipeline:
         if self.upload_for_evaluation:
             logger.info("Evaluation mode enabled - documents will be uploaded to GCP bucket.")
 
+        if self.upload_to_public:
+            logger.info("Public upload enabled - PDFs will be uploaded to public bucket.")
+
         for key in new_keys:
             with tempfile.TemporaryDirectory() as tmpdir:
                 local_path = self.fetcher.fetch_file(key, f"{tmpdir}/{key.split('/')[-1]}")
+
+                public_url = None
+                if self.upload_to_public and self.public_uploader:
+                    try:
+                        if not self.public_uploader.pdf_exists(key):
+                            public_url = self.public_uploader.upload_pdf(str(local_path), key)
+                            logger.info(f"Uploaded PDF to public bucket: {key}")
+                        else:
+                            public_url = self.public_uploader.get_public_url(key)
+                            logger.info(f"PDF already exists in public bucket: {key}")
+                    except Exception as e:
+                        logger.error(f"Failed to upload PDF to public bucket: {key}. Error: {e}")
+
                 docs = self.loader.load(local_path)
                 chunks = self.processor.process(docs)
+
+                if public_url:
+                    for chunk in chunks:
+                        chunk.metadata["public_url"] = public_url
+                        chunk.metadata["viewable"] = True
 
                 self.store.save(chunks)
 
@@ -67,6 +97,9 @@ class SyncPipeline:
 
         if self.upload_for_evaluation:
             logger.info(f"Evaluation documents uploaded to bucket: {config.gcp.EVALUATION_BUCKET_NAME}")
+
+        if self.upload_to_public:
+            logger.info(f"PDFs uploaded to public bucket: {config.gcp.PUBLIC_BUCKET_NAME}")
 
 
 if __name__ == "__main__":
@@ -86,6 +119,12 @@ if __name__ == "__main__":
         default=False,
         help="Upload processed documents to GCP bucket for evaluation purposes",
     )
+    parser.add_argument(
+        "--no-public-upload",
+        action="store_true",
+        default=False,
+        help="Disable uploading PDFs to public bucket (enabled by default)",
+    )
     args = parser.parse_args()
 
     SyncPipeline(
@@ -94,4 +133,5 @@ if __name__ == "__main__":
         use_existing_collection=args.use_existing_collection,
         clear_collection_before=args.clear_collection_before,
         upload_for_evaluation=args.upload_for_evaluation,
+        upload_to_public=not args.no_public_upload,
     ).sync()

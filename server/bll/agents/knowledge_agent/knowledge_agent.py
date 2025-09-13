@@ -8,6 +8,8 @@ from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 
+from server.utils.public_document_helper import PublicDocumentHelper
+
 
 class KnowledgeAgent(BaseAgent):
     """
@@ -49,6 +51,8 @@ class KnowledgeAgent(BaseAgent):
         self.db_docs_min_tolerance = 1
 
         self.contextualizer = ContextualizerAgent()
+
+        self.public_helper = PublicDocumentHelper()
 
         super().__init__(llm, verbose)
 
@@ -113,8 +117,15 @@ class KnowledgeAgent(BaseAgent):
         for doc in all_docs:
             source_type: str = doc.metadata["type"]
             source_info: str = str(doc.metadata.get("source"))
+
             if source_type == "internal":
-                source_info += f"#page={doc.metadata.get('page_number', 1)}"
+                public_url = self.public_helper.extract_public_url_from_document(doc)
+                if public_url:
+                    page_info = f"#page={doc.metadata.get('page_number', 1)}"
+                    source_info = f"[{source_info}{page_info}]({public_url})"
+                else:
+                    source_info += f"#page={doc.metadata.get('page_number', 1)}"
+
             context_parts.append(f"[{source_type.upper()}]\n{doc.page_content}\nReference: {source_info}")
 
         merged_context: str = "\n\n---\n\n".join(context_parts)
