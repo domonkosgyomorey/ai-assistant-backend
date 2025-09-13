@@ -20,36 +20,29 @@ class Communication:
         if not messages:
             return False
 
-        # Must end with user message
         if messages[-1]["role"] != "user":
             return False
 
-        # Check alternating pattern
         for i in range(1, len(messages)):
             current_role = messages[i]["role"]
             previous_role = messages[i - 1]["role"]
 
-            # Messages should alternate
             if current_role == previous_role:
                 return False
 
         return True
 
     def send_message(self, message: str) -> str:
-        """Send a message to the server and handle streaming response with detailed output."""
-        # Record the request
+        """Send a message to the server and handle JSON response with detailed output."""
         self.conversations["messages"].append({"text": message, "type": str(MessageType.REQUEST), "time": get_time()})
 
-        # Convert conversation history to the expected message format
-        # Ensure we maintain proper alternating order: user -> assistant -> user -> assistant...
         messages = []
         for msg in self.conversations["messages"]:
             if msg["type"] == str(MessageType.REQUEST):
                 messages.append({"role": "user", "content": msg["text"]})
             elif msg["type"] == str(MessageType.RESPONSE):
-                messages.append({"role": "assistant", "content": msg["text"]})
+                messages.append({"role": "ai", "content": msg["text"]})
 
-        # Ensure the sequence ends with user message (which it should since we just added one)
         if not self._validate_message_sequence(messages):
             raise ValueError(
                 "Invalid message sequence: messages must alternate between user and assistant and end with user message"
@@ -57,48 +50,32 @@ class Communication:
 
         payload = create_message_payload(messages)
 
-        # Display request information
         print(f"{Fore.BLUE}📤 Sending request to: {Fore.CYAN}{Config.ENDPOINT}{Fore.RESET}")
         print(f"{Fore.BLUE}📝 Payload: {Fore.WHITE}{json.dumps(payload, indent=2)}{Fore.RESET}")
         print(f"{Fore.BLUE}📊 Request size: {Fore.YELLOW}{num_of_bytes(json.dumps(payload))} bytes{Fore.RESET}")
-        print(f"{Fore.GREEN}🔄 Streaming response:{Fore.RESET}\n")
+        print(f"{Fore.GREEN}🔄 Processing request:{Fore.RESET}\n")
 
         try:
-            # Make streaming request
-            response = requests.post(Config.ENDPOINT, json=payload, stream=True)
+            response = requests.post(Config.ENDPOINT, json=payload)
             response.raise_for_status()
 
-            # Handle streaming response
-            full_response = ""
-            print(f"[{Fore.GREEN}AI{Fore.RESET}]: ", end="", flush=True)
+            response_data = response.json()
 
-            # Use response.iter_content with proper text handling
-            response.encoding = "utf-8"  # Ensure proper encoding
-            for chunk in response.iter_content(chunk_size=1, decode_unicode=False):
-                if chunk:
-                    # Decode bytes to string if necessary
-                    if isinstance(chunk, bytes):
-                        try:
-                            chunk_str = chunk.decode("utf-8")
-                        except UnicodeDecodeError:
-                            chunk_str = chunk.decode("utf-8", errors="ignore")
-                    else:
-                        chunk_str = str(chunk)
+            ai_content = response_data.get("message", {}).get("content", "")
+            metadata = response_data.get("metadata", {})
 
-                    print(chunk_str, end="", flush=True)
-                    full_response += chunk_str
+            print(f"[{Fore.GREEN}AI{Fore.RESET}]: {ai_content}")
 
-            print()  # New line after streaming is complete
+            if metadata:
+                print(f"{Fore.BLUE}📋 Metadata: {Fore.WHITE}{json.dumps(metadata, indent=2)}{Fore.RESET}")
 
-            # Record the response
             self.conversations["messages"].append(
-                {"text": full_response, "type": str(MessageType.RESPONSE), "time": get_time()}
+                {"text": ai_content, "type": str(MessageType.RESPONSE), "time": get_time()}
             )
 
-            # Display final statistics
-            print(f"\n{Fore.BLUE}📈 Response size: {Fore.YELLOW}{num_of_bytes(full_response)} bytes{Fore.RESET}")
+            print(f"\n{Fore.BLUE}📈 Response size: {Fore.YELLOW}{num_of_bytes(ai_content)} bytes{Fore.RESET}")
 
-            return full_response
+            return ai_content
 
         except requests.exceptions.RequestException as e:
             error_msg = f"Request failed: {str(e)}"

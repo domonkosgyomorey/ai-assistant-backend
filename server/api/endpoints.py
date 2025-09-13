@@ -1,3 +1,4 @@
+import json
 from contextlib import asynccontextmanager
 
 from api.common_types import RequestModel
@@ -5,7 +6,6 @@ from bll.agents.knowledge import Knowledge
 from dal.mongo_db import MongoDB
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
 
 
 @asynccontextmanager
@@ -27,19 +27,20 @@ app.add_middleware(
 )
 
 
-@app.post("/ask/stream")
-async def ask_question_stream(request: RequestModel):
-    async def generate_response():
-        agent: Knowledge = app.state.knowledge_agent
+@app.post("/prompt")
+async def prompt(request: RequestModel):
+    messages = [request.message] + request.context
+    messages = [msg.to_langchain_message() for msg in messages]
 
-        langchain_messages = [msg.to_langchain_message() for msg in request.messages]
+    agent: Knowledge = app.state.knowledge_agent
+    metadata: dict = {}
 
-        async for chunk in agent.astream({"messages": langchain_messages}):
-            if isinstance(chunk, dict) and "answer" in chunk:
-                answer = chunk["answer"]
-                if hasattr(answer, "content"):
-                    yield answer.content
-                else:
-                    yield str(answer)
+    answer = await agent.ainvoke({"messages": messages})
+    response_chunk = {"message": {"role": "ai", "content": str(answer)}, "metadata": metadata}
 
-    return StreamingResponse(generate_response(), media_type="text/plain; charset=utf-8")
+    return json.dumps(response_chunk)
+
+
+@app.post("/health")
+async def health_check():
+    return {"status": "healthy"}

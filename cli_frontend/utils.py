@@ -7,11 +7,6 @@ def create_message_payload(messages: List[Dict[str, str]]) -> dict:
     return {"messages": messages}
 
 
-def create_simple_payload(message: str) -> dict:
-    # Deprecated: Use create_message_payload instead
-    return {"question": message}
-
-
 def get_time() -> str:
     return datetime.now().isoformat(sep=" ")
 
