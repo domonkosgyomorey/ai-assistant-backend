@@ -14,16 +14,13 @@ class GCPPublicUploader:
         self.bucket_name = bucket_name
 
     def ensure_bucket_is_public(self):
-        """Ensure the bucket has public read access."""
-        try:
-            # Make bucket publicly readable
-            policy = self.bucket.get_iam_policy(requested_policy_version=3)
-            policy.bindings.append({"role": "roles/storage.objectViewer", "members": {"allUsers"}})
-            self.bucket.set_iam_policy(policy)
-            logger.info(f"Bucket {self.bucket_name} is now publicly readable")
-        except Exception as e:
-            logger.warning(f"Could not set public access for bucket {self.bucket_name}: {e}")
-            logger.info("Please ensure the bucket has public read access manually")
+        """
+        Note: With uniform bucket-level access enabled, public access is managed
+        via IAM policies in Terraform, not through bucket ACLs.
+        This method is kept for compatibility but does nothing.
+        """
+        logger.info(f"Bucket {self.bucket_name} public access is managed via Terraform IAM policies")
+        return
 
     def upload_pdf(self, local_pdf_path: str, source_key: str) -> str:
         """
@@ -45,8 +42,8 @@ class GCPPublicUploader:
         # Set content type for PDFs
         blob.upload_from_filename(local_pdf_path, content_type="application/pdf")
 
-        # Make this specific blob publicly readable
-        blob.make_public()
+        # Note: No need to call blob.make_public() because uniform bucket-level access
+        # is enabled and the bucket already has public read access via IAM
 
         # Generate public URL
         public_url = f"https://storage.googleapis.com/{self.bucket_name}/{blob_name}"
