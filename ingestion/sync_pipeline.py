@@ -88,8 +88,8 @@ class SyncPipeline:
 
                 if self.upload_for_evaluation and self.document_uploader:
                     try:
-                        self.document_uploader.upload_documents(chunks)
-                        logger.info(f"Successfully uploaded {len(chunks)} documents for evaluation: {key}")
+                        self.document_uploader.upload_documents(docs)
+                        logger.info(f"Successfully uploaded {len(docs)} documents for evaluation: {key}")
                     except Exception as e:
                         logger.error(f"Failed to upload documents for evaluation: {key}. Error: {e}")
 
