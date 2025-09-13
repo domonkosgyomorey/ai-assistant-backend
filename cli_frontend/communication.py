@@ -62,12 +62,8 @@ class Communication:
             response_data = response.json()
 
             ai_content = response_data.get("message", {}).get("content", "")
-            metadata = response_data.get("metadata", {})
 
             print(f"[{Fore.GREEN}AI{Fore.RESET}]: {ai_content}")
-
-            if metadata:
-                print(f"{Fore.BLUE}📋 Metadata: {Fore.WHITE}{json.dumps(metadata, indent=2)}{Fore.RESET}")
 
             self.conversations["messages"].append(
                 {"text": ai_content, "type": str(MessageType.RESPONSE), "time": get_time()}

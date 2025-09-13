@@ -5,6 +5,7 @@ from core.interfaces import BaseRetriever
 from core.logger import logger
 from langchain_core.language_models import BaseLanguageModel
 from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 
 
@@ -148,7 +149,7 @@ class KnowledgeAgent(BaseAgent):
             | RunnableLambda(self._conditional_web_search)
             | RunnableLambda(self._merge_context)
             | RunnablePassthrough.assign(
-                answer=KNOWLEDGE_SYSTEM_PROMPT | self.llm,
+                answer=KNOWLEDGE_SYSTEM_PROMPT | self.llm | StrOutputParser(),
             )
         )
         return chain

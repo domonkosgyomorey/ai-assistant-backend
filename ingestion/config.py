@@ -14,6 +14,7 @@ class MongoConfig:
 
 class GCPConfig:
     BUCKET_NAME: str = "ai-assistant-dev-docs"
+    EVALUATION_BUCKET_NAME: str = "ai-assistant-evaluation"
     PREFIX: str = ""
 
 

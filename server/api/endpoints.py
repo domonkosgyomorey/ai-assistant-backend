@@ -1,4 +1,3 @@
-import json
 from contextlib import asynccontextmanager
 
 from api.common_types import RequestModel
@@ -33,12 +32,12 @@ async def prompt(request: RequestModel):
     messages = [msg.to_langchain_message() for msg in messages]
 
     agent: Knowledge = app.state.knowledge_agent
-    metadata: dict = {}
 
-    answer = await agent.ainvoke({"messages": messages})
-    response_chunk = {"message": {"role": "ai", "content": str(answer)}, "metadata": metadata}
+    context = await agent.ainvoke({"messages": messages})
+    answer = context["answer"]
+    response_chunk = {"message": {"role": "ai", "content": answer}, "metadata": context}
 
-    return json.dumps(response_chunk)
+    return response_chunk
 
 
 @app.post("/health")

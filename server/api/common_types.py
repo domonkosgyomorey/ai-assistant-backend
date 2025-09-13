@@ -28,12 +28,13 @@ class RequestModel(BaseModel):
     @field_validator("context")
     @classmethod
     def validate_message_sequence(cls, context: List[MessageModel]) -> List[MessageModel]:
-        """Validate that messages alternate between user and assistant and end with user message."""
+        """Validate that messages alternate between user and assistant and end with AI message."""
+        # Empty context is allowed (first message in conversation)
         if not context:
-            raise ValueError("Messages list cannot be empty")
+            return context
 
         if context[-1].role != "ai":
-            raise ValueError("Message sequence must end with a user message")
+            raise ValueError("Message sequence must end with an AI message")
 
         for i in range(1, len(context)):
             current_role = context[i].role
