@@ -51,6 +51,60 @@ resource "google_storage_bucket" "knowledge_docs" {
   }
 }
 
+# Bucket for evaluation documents
+resource "google_storage_bucket" "evaluation_docs" {
+  name                        = "ai-assistant-evaluation"
+  location                    = "us-central1"
+  project                     = "propane-will-468518-d0"
+  force_destroy               = false
+  uniform_bucket_level_access = true
+
+  versioning {
+    enabled = false
+  }
+
+  lifecycle_rule {
+    action {
+      type = "Delete"
+    }
+    condition {
+      age = 365
+    }
+  }
+
+  labels = {
+    environment = "dev"
+    usage       = "evaluation-docs"
+  }
+}
+
+# Bucket for public document access
+resource "google_storage_bucket" "public_docs" {
+  name                        = "ai-assistant-public-docs"
+  location                    = "us-central1"
+  project                     = "propane-will-468518-d0"
+  force_destroy               = false
+  uniform_bucket_level_access = true
+
+  versioning {
+    enabled = false
+  }
+
+  lifecycle_rule {
+    action {
+      type = "Delete"
+    }
+    condition {
+      age = 365
+    }
+  }
+
+  labels = {
+    environment = "dev"
+    usage       = "public-docs"
+  }
+}
+
 resource "google_project_service" "secret_manager" {
   project = "propane-will-468518-d0"
   service = "secretmanager.googleapis.com"
@@ -62,11 +116,30 @@ resource "google_service_account" "github_sa" {
   display_name = "GitHub Actions SA"
 }
 
-# Give it read access to the bucket
-resource "google_storage_bucket_iam_member" "bucket_reader" {
+# Give it read/write access to all buckets
+resource "google_storage_bucket_iam_member" "bucket_admin_knowledge" {
   bucket = google_storage_bucket.knowledge_docs.name
-  role   = "roles/storage.objectViewer"
+  role   = "roles/storage.objectAdmin"
   member = "serviceAccount:github-sa@propane-will-468518-d0.iam.gserviceaccount.com"
+}
+
+resource "google_storage_bucket_iam_member" "bucket_admin_evaluation" {
+  bucket = google_storage_bucket.evaluation_docs.name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:github-sa@propane-will-468518-d0.iam.gserviceaccount.com"
+}
+
+resource "google_storage_bucket_iam_member" "bucket_admin_public" {
+  bucket = google_storage_bucket.public_docs.name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:github-sa@propane-will-468518-d0.iam.gserviceaccount.com"
+}
+
+# Make the public docs bucket readable by anyone
+resource "google_storage_bucket_iam_member" "public_docs_public_read" {
+  bucket = google_storage_bucket.public_docs.name
+  role   = "roles/storage.objectViewer"
+  member = "allUsers"
 }
 
 # Create a key for the service account
