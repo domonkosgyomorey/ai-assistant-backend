@@ -2,7 +2,7 @@ from ingestion.utils.gcp_secret import get_secret
 
 
 class SplitterConfig:
-    CHUNK_SIZE: int = 800
+    CHUNK_SIZE: int = 1000
     OVERLAP_SIZE: int = 200
 
 

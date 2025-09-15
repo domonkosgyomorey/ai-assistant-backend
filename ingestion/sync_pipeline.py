@@ -10,7 +10,7 @@ from argparse import ArgumentParser
 from langchain_core.documents import Document
 
 from ingestion.config import config
-from ingestion.loaders.pdf_loader import PDFLoader
+from ingestion.loaders.ocr_pdf_loader import OCRPDFLoader
 from ingestion.processors.document_processor import DocumentProcessorImpl
 from ingestion.storage_fetchers.gcp_bucket_fetcher import GCPBucketFetcher
 from ingestion.storage_fetchers.gcp_document_uploader import GCPDocumentUploader
@@ -35,7 +35,7 @@ class SyncPipeline:
             use_existing_collection=use_existing_collection,
             clear_collection_before=clear_collection_before,
         )
-        self.loader = PDFLoader()
+        self.loader = OCRPDFLoader()
         self.processor = DocumentProcessorImpl()
 
         self.upload_for_evaluation = upload_for_evaluation

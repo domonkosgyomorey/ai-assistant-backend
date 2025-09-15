@@ -2,6 +2,9 @@
 name = "ai-assistant-backend"
 version = "0.1.0"
 requires-python = ">=3.12"
+dependencies = [
+    "pytesseract>=0.3.13",
+]
 
 [dependency-groups]
 dependencies = [
@@ -24,6 +27,11 @@ dev = [
     "langgraph==0.6.5",
     "langfuse==3.3.0",
     {include-group = "ingestion"},
+    {include-group = "evaluation"},
+]
+
+evaluation = [
+    "ragas==0.3.4",
 ]
 
 ingestion = [
