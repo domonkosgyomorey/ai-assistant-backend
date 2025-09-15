@@ -28,6 +28,8 @@ class SyncPipeline:
         clear_collection_before: bool,
         upload_for_evaluation: bool = False,
         upload_to_public: bool = True,
+        clear_evaluation_bucket: bool = False,
+        clear_public_bucket: bool = False,
     ):
         self.fetcher = GCPBucketFetcher(bucket_name)
         self.store = MongoAtlasVectorStore(
@@ -39,12 +41,14 @@ class SyncPipeline:
         self.processor = DocumentProcessorImpl()
 
         self.upload_for_evaluation = upload_for_evaluation
+        self.clear_evaluation_bucket = clear_evaluation_bucket
         if self.upload_for_evaluation:
             self.document_uploader = GCPDocumentUploader(config.gcp.EVALUATION_BUCKET_NAME)
         else:
             self.document_uploader = None
 
         self.upload_to_public = upload_to_public
+        self.clear_public_bucket = clear_public_bucket
         if self.upload_to_public:
             self.public_uploader = GCPPublicUploader(config.gcp.PUBLIC_BUCKET_NAME)
             self.public_uploader.ensure_bucket_is_public()
@@ -52,6 +56,21 @@ class SyncPipeline:
             self.public_uploader = None
 
     def sync(self):
+        # Clear buckets if requested
+        if self.clear_evaluation_bucket and self.document_uploader:
+            logger.info("Clearing evaluation bucket before sync...")
+            if self.document_uploader.clear_bucket():
+                logger.info("✓ Evaluation bucket cleared successfully")
+            else:
+                logger.error("✗ Failed to clear evaluation bucket")
+
+        if self.clear_public_bucket and self.public_uploader:
+            logger.info("Clearing public bucket before sync...")
+            if self.public_uploader.clear_bucket():
+                logger.info("✓ Public bucket cleared successfully")
+            else:
+                logger.error("✗ Failed to clear public bucket")
+
         known_keys = self.store.list_source_keys()
         new_keys = self.fetcher.new_files(known_keys)
         logger.info(f"Currently {len(known_keys)} files in the collection.")
@@ -147,6 +166,18 @@ if __name__ == "__main__":
         default=False,
         help="Disable uploading PDFs to public bucket (enabled by default)",
     )
+    parser.add_argument(
+        "--clear-evaluation-bucket",
+        action="store_true",
+        default=False,
+        help="Clear evaluation bucket before uploading new documents",
+    )
+    parser.add_argument(
+        "--clear-public-bucket",
+        action="store_true",
+        default=False,
+        help="Clear public bucket before uploading new PDFs",
+    )
     args = parser.parse_args()
 
     SyncPipeline(
@@ -156,4 +187,6 @@ if __name__ == "__main__":
         clear_collection_before=args.clear_collection_before,
         upload_for_evaluation=args.upload_for_evaluation,
         upload_to_public=not args.no_public_upload,
+        clear_evaluation_bucket=args.clear_evaluation_bucket,
+        clear_public_bucket=args.clear_public_bucket,
     ).sync()

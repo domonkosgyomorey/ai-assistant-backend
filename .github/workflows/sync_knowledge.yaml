@@ -30,6 +30,16 @@ on:
         required: false
         default: false
         type: boolean
+      clear_evaluation_bucket:
+        description: 'Clear evaluation bucket before uploading'
+        required: false
+        default: false
+        type: boolean
+      clear_public_bucket:
+        description: 'Clear public bucket before uploading'
+        required: false
+        default: false
+        type: boolean
 
 env:
   DEV_PROJECT_ID: propane-will-468518-d0
@@ -81,6 +91,12 @@ jobs:
           if [ "${{ inputs.disable_public_upload }}" = "true" ]; then
             echo "no_public_upload=--no-public-upload" >> $GITHUB_OUTPUT
           fi
+          if [ "${{ inputs.clear_evaluation_bucket }}" = "true" ]; then
+            echo "clear_evaluation_bucket=--clear-evaluation-bucket" >> $GITHUB_OUTPUT
+          fi
+          if [ "${{ inputs.clear_public_bucket }}" = "true" ]; then
+            echo "clear_public_bucket=--clear-public-bucket" >> $GITHUB_OUTPUT
+          fi
       - name: Run sync pipeline
         run: |
-          uv run -- python -m ingestion.sync_pipeline ${{ steps.set_flag.outputs.clear_collection_before }} ${{ steps.set_flag.outputs.use_existing_collection }} ${{ steps.set_flag.outputs.upload_for_evaluation }} ${{ steps.set_flag.outputs.no_public_upload }}
+          uv run -- python -m ingestion.sync_pipeline ${{ steps.set_flag.outputs.clear_collection_before }} ${{ steps.set_flag.outputs.use_existing_collection }} ${{ steps.set_flag.outputs.upload_for_evaluation }} ${{ steps.set_flag.outputs.no_public_upload }} ${{ steps.set_flag.outputs.clear_evaluation_bucket }} ${{ steps.set_flag.outputs.clear_public_bucket }}

@@ -75,3 +75,25 @@ class GCPPublicUploader:
         except Exception as e:
             logger.error(f"Failed to delete PDF {source_key}: {e}")
             return False
+
+    def clear_bucket(self) -> bool:
+        """Delete all files from the public bucket using efficient bulk operations."""
+        try:
+            # Get all blobs at once without downloading content
+            blobs = list(self.bucket.list_blobs())
+            if not blobs:
+                logger.info(f"Public bucket {self.bucket_name} is already empty")
+                return True
+
+            logger.info(f"Clearing {len(blobs)} files from public bucket {self.bucket_name}")
+
+            # Use delete_blobs for efficient bulk deletion
+            # This is much faster than individual deletions
+            blob_names = [blob.name for blob in blobs]
+            self.bucket.delete_blobs(blobs)
+
+            logger.info(f"Successfully cleared public bucket {self.bucket_name} ({len(blob_names)} files deleted)")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to clear public bucket {self.bucket_name}: {e}")
+            return False

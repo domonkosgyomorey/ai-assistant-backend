@@ -81,3 +81,36 @@ class GCPDocumentUploader:
         """List all document IDs in the bucket."""
         blobs = self.client.list_blobs(self.bucket)
         return [blob.name.replace(".pkl", "") for blob in blobs if blob.name.endswith(".pkl")]
+
+    def clear_bucket(self) -> bool:
+        """Delete all documents from the evaluation bucket using efficient bulk operations."""
+        try:
+            # Get all blobs at once without downloading content
+            blobs = list(self.bucket.list_blobs())
+            if not blobs:
+                logger.info(f"Evaluation bucket {self.bucket.name} is already empty")
+                return True
+
+            logger.info(f"Clearing {len(blobs)} files from evaluation bucket {self.bucket.name}")
+
+            # Use delete_blobs for efficient bulk deletion
+            # This is much faster than individual deletions or batching
+            self.bucket.delete_blobs(blobs)
+
+            logger.info(f"Successfully cleared evaluation bucket {self.bucket.name} ({len(blobs)} files deleted)")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to clear evaluation bucket {self.bucket.name}: {e}")
+            return False
+
+    def delete_document(self, document_id: str) -> bool:
+        """Delete a specific document from the bucket."""
+        try:
+            blob_key = f"{document_id}.pkl"
+            blob = self.bucket.blob(blob_key)
+            blob.delete()
+            logger.info(f"Deleted document from evaluation bucket: {document_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to delete document {document_id}: {e}")
+            return False
