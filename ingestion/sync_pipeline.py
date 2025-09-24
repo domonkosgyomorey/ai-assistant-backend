@@ -43,9 +43,11 @@ class SyncPipeline:
         self.upload_for_evaluation = upload_for_evaluation
         self.clear_evaluation_bucket = clear_evaluation_bucket
         if self.upload_for_evaluation:
-            self.document_uploader = GCPDocumentUploader(config.gcp.EVALUATION_BUCKET_NAME)
+            self.evaluation_document_uploader = GCPDocumentUploader(
+                config.gcp.EVALUATION_BUCKET_NAME, config.gcp.EVALUATION_DOCS_FOLDER
+            )
         else:
-            self.document_uploader = None
+            self.evaluation_document_uploader = None
 
         self.upload_to_public = upload_to_public
         self.clear_public_bucket = clear_public_bucket
@@ -56,10 +58,9 @@ class SyncPipeline:
             self.public_uploader = None
 
     def sync(self):
-        # Clear buckets if requested
-        if self.clear_evaluation_bucket and self.document_uploader:
+        if self.clear_evaluation_bucket and self.evaluation_document_uploader:
             logger.info("Clearing evaluation bucket before sync...")
-            if self.document_uploader.clear_bucket():
+            if self.evaluation_document_uploader.clear_bucket():
                 logger.info("✓ Evaluation bucket cleared successfully")
             else:
                 logger.error("✗ Failed to clear evaluation bucket")
@@ -108,7 +109,7 @@ class SyncPipeline:
 
                 self.store.save(chunks)
 
-                if self.upload_for_evaluation and self.document_uploader:
+                if self.upload_for_evaluation and self.evaluation_document_uploader:
                     try:
                         base_filename = key.split("/")[-1].replace(".pdf", "").replace(".", "_")
 
@@ -129,7 +130,7 @@ class SyncPipeline:
                             )
                             langchain_docs.append(langchain_doc)
 
-                        self.document_uploader.upload_documents(langchain_docs)
+                        self.evaluation_document_uploader.upload_documents(langchain_docs)
                         logger.info(f"Successfully uploaded {len(langchain_docs)} documents for evaluation: {key}")
                     except Exception as e:
                         logger.error(f"Failed to upload documents for evaluation: {key}. Error: {e}")
@@ -137,7 +138,9 @@ class SyncPipeline:
         logger.info(f"Synced {len(new_keys)} new files.")
 
         if self.upload_for_evaluation:
-            logger.info(f"Evaluation documents uploaded to bucket: {config.gcp.EVALUATION_BUCKET_NAME}")
+            logger.info(
+                f"Evaluation documents uploaded to bucket: {config.gcp.EVALUATION_BUCKET_NAME}/{config.gcp.EVALUATION_DOCS_FOLDER}"
+            )
 
         if self.upload_to_public:
             logger.info(f"PDFs uploaded to public bucket: {config.gcp.PUBLIC_BUCKET_NAME}")

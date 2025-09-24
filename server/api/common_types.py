@@ -21,31 +21,30 @@ class MessageModel(BaseModel):
 
 
 class RequestModel(BaseModel):
-    context: List[MessageModel] = Field(description="The conversation messages to send to the knowledge agent")
+    messages: List[MessageModel] = Field(description="The conversation messages to send to the knowledge agent")
     chatId: str = Field(default="default", description="The chat session identifier")
-    message: MessageModel = Field(description="The latest message from the user")
 
-    @field_validator("context")
+    @field_validator("messages")
     @classmethod
-    def validate_message_sequence(cls, context: List[MessageModel]) -> List[MessageModel]:
+    def validate_message_sequence(cls, messages: List[MessageModel]) -> List[MessageModel]:
         """Validate that messages alternate between user and assistant and end with AI message."""
-        # Empty context is allowed (first message in conversation)
-        if not context:
-            return context
+        # Empty messages list is allowed (first message in conversation)
+        if not messages:
+            return messages
 
-        if context[-1].role != "ai":
+        if messages[-1].role == "ai":
             raise ValueError("Message sequence must end with an AI message")
 
-        for i in range(1, len(context)):
-            current_role = context[i].role
-            previous_role = context[i - 1].role
+        for i in range(1, len(messages)):
+            current_role = messages[i].role
+            previous_role = messages[i - 1].role
 
             if current_role == previous_role:
                 raise ValueError(
                     f"Messages must alternate between user and assistant. Found consecutive {current_role} messages at positions {i - 1} and {i}"
                 )
 
-        if len(context) > 1 and context[0].role != "user":
+        if len(messages) > 1 and messages[0].role != "user":
             raise ValueError("First message in a conversation should be from user")
 
-        return context
+        return messages

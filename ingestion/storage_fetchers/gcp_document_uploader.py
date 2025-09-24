@@ -10,7 +10,9 @@ from ingestion.utils.logger import logger
 class GCPDocumentUploader:
     """Uploads LangChain Document objects to GCP bucket for evaluation purposes."""
 
-    def __init__(self, bucket_name: str):
+    def __init__(self, bucket_name: str, prefix: str = ""):
+        self.bucket_name = bucket_name
+        self.prefix = prefix
         self.client = Client()
         self.bucket = self.client.bucket(bucket_name)
 
@@ -26,6 +28,9 @@ class GCPDocumentUploader:
             str: GCP path where document was uploaded
         """
         blob_key = f"{document_id}.pkl"
+
+        if self.prefix:
+            blob_key = f"{self.prefix.rstrip('/')}/{blob_key}"
 
         blob = self.bucket.blob(blob_key)
         pickle_data = pickle.dumps(document)
@@ -57,6 +62,10 @@ class GCPDocumentUploader:
     def download_document(self, document_id: str) -> Document:
         """Download and reconstruct a Document object from GCP bucket."""
         blob_key = f"{document_id}.pkl"
+
+        if self.prefix:
+            blob_key = f"{self.prefix.rstrip('/')}/{blob_key}"
+
         blob = self.bucket.blob(blob_key)
 
         if not blob.exists():
@@ -79,25 +88,37 @@ class GCPDocumentUploader:
 
     def list_document_ids(self) -> List[str]:
         """List all document IDs in the bucket."""
-        blobs = self.client.list_blobs(self.bucket)
-        return [blob.name.replace(".pkl", "") for blob in blobs if blob.name.endswith(".pkl")]
+        blobs = self.client.list_blobs(self.bucket, prefix=self.prefix)
+        document_ids = []
+
+        for blob in blobs:
+            if blob.name.endswith(".pkl"):
+                if self.prefix and blob.name.startswith(self.prefix):
+                    relative_name = blob.name[len(self.prefix) :].lstrip("/")
+                    document_ids.append(relative_name.replace(".pkl", ""))
+                else:
+                    document_ids.append(blob.name.replace(".pkl", ""))
+
+        return document_ids
 
     def clear_bucket(self) -> bool:
         """Delete all documents from the evaluation bucket using efficient bulk operations."""
         try:
-            # Get all blobs at once without downloading content
-            blobs = list(self.bucket.list_blobs())
+            blobs = list(self.bucket.list_blobs(prefix=self.prefix))
             if not blobs:
-                logger.info(f"Evaluation bucket {self.bucket.name} is already empty")
+                prefix_msg = f" with prefix '{self.prefix}'" if self.prefix else ""
+                logger.info(f"Evaluation bucket {self.bucket.name}{prefix_msg} is already empty")
                 return True
 
-            logger.info(f"Clearing {len(blobs)} files from evaluation bucket {self.bucket.name}")
+            prefix_msg = f" with prefix '{self.prefix}'" if self.prefix else ""
+            logger.info(f"Clearing {len(blobs)} files from evaluation bucket {self.bucket.name}{prefix_msg}")
 
             # Use delete_blobs for efficient bulk deletion
-            # This is much faster than individual deletions or batching
             self.bucket.delete_blobs(blobs)
 
-            logger.info(f"Successfully cleared evaluation bucket {self.bucket.name} ({len(blobs)} files deleted)")
+            logger.info(
+                f"Successfully cleared evaluation bucket {self.bucket.name}{prefix_msg} ({len(blobs)} files deleted)"
+            )
             return True
         except Exception as e:
             logger.error(f"Failed to clear evaluation bucket {self.bucket.name}: {e}")
@@ -107,6 +128,10 @@ class GCPDocumentUploader:
         """Delete a specific document from the bucket."""
         try:
             blob_key = f"{document_id}.pkl"
+
+            if self.prefix:
+                blob_key = f"{self.prefix.rstrip('/')}/{blob_key}"
+
             blob = self.bucket.blob(blob_key)
             blob.delete()
             logger.info(f"Deleted document from evaluation bucket: {document_id}")

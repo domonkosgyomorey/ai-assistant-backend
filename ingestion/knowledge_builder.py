@@ -3,10 +3,9 @@ import os
 
 from langchain.schema import Document
 
-from ingestion.interfaces.interfaces import DocumentLoader, DocumentProcessor, DocumentStore
-from ingestion.loaders.pdf_loader import PDFLoader
+from ingestion.interfaces.interfaces import DocumentLoader, DocumentProcessor
+from ingestion.loaders.ocr_pdf_loader import OCRPDFLoader
 from ingestion.processors.document_processor import DocumentProcessorImpl
-from ingestion.stores.mongo_store import MongoAtlasVectorStore
 from ingestion.utils.common import CustomDocument
 from ingestion.utils.logger import logger
 
@@ -21,22 +20,23 @@ def get_all_files(directory):
 
 
 class KnowledgeBuilder:
-    def __init__(self, loader: DocumentLoader, processor: DocumentProcessor, store: DocumentStore):
+    def __init__(self, loader: DocumentLoader, processor: DocumentProcessor):
         self.loader: DocumentLoader = loader
         self.processor: DocumentProcessor = processor
-        self.store: DocumentStore = store
 
     def run(self, source_folder: str):
         files = get_all_files(source_folder)
-        files_in_db = self.store.list_source_keys()
-        new_files = [file for file in files if file not in files_in_db]
-        logger.info(f"Found {len(files)} files in {source_folder} and {len(new_files)} new files to process.")
+        logger.info(f"Found {len(files)} files in {source_folder} and {len(files)} new files to process.")
 
-        for file_path in new_files:
+        for file_path in files:
             logger.info(f"Processing file: {file_path}")
             raw_docs: list[CustomDocument] = self.loader.load(file_path)
             processed_docs: list[Document] = self.processor.process(raw_docs)
-            self.store.save(processed_docs)
+            for doc in processed_docs:
+                doc.page_content = f"File name: {file_path} | File title: {doc.metadata.get('title', 'None')} | Content in page {doc.metadata.get('page_number', 0)}: {doc.page_content}"
+            with open("asd.json", "w", encoding="utf-8") as f:
+                f.write("[\n" + ",\n".join([f'"{doc.page_content}"' for doc in processed_docs]) + "\n]")
+            # self.store.save(processed_docs)
         logger.info("Pipeline run completed for all files.")
 
 
@@ -56,13 +56,13 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    loader: DocumentLoader = PDFLoader()
+    loader: DocumentLoader = OCRPDFLoader()
     processor: DocumentProcessor = DocumentProcessorImpl()
-    store: DocumentStore = MongoAtlasVectorStore(
-        collection_name=args.collection_name,
-        use_existing_collection=args.use_existing_collection,
-        clear_collection_before=args.clear_collection_before,
-    )
+    # store: DocumentStore = MongoAtlasVectorStore(
+    #    collection_name=args.collection_name,
+    #    use_existing_collection=args.use_existing_collection,
+    #    clear_collection_before=args.clear_collection_before,
+    # )
 
-    pipeline = KnowledgeBuilder(loader, processor, store)
+    pipeline = KnowledgeBuilder(loader, processor)
     pipeline.run(args.source_folder)

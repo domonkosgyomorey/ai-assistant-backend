@@ -28,7 +28,7 @@ app.add_middleware(
 
 @app.post("/prompt")
 async def prompt(request: RequestModel):
-    messages = [request.message] + request.context
+    messages = request.messages
     messages = [msg.to_langchain_message() for msg in messages]
 
     agent: Knowledge = app.state.knowledge_agent
