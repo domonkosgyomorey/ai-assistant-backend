@@ -118,7 +118,7 @@ class SyncPipeline:
                             unique_id = f"{base_filename}_doc_{doc_idx}_{uuid.uuid4().hex[:8]}"
 
                             langchain_doc = Document(
-                                page_content=doc.content,
+                                page_content=f"**source name**:{doc.source} **content**: {doc.content}",
                                 metadata={
                                     "id": unique_id,
                                     "source": doc.source,

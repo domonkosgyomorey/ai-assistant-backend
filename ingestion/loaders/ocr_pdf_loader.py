@@ -37,20 +37,16 @@ class OCRPDFLoader(DocumentLoader):
             page = doc.load_page(i)
 
             if self.ocr_first:
-                # OCR-first approach
                 content = self._extract_with_ocr_primary(page)
                 if not content.strip():
-                    # Fallback to regular text extraction
                     content = page.get_text("text")
             else:
-                # Traditional approach with better OCR fallback
                 content = page.get_text("text")
-                if len(content.strip()) < 100:  # More generous threshold
+                if len(content.strip()) < 100:
                     ocr_content = self._extract_with_ocr_primary(page)
                     if ocr_content.strip():
                         content = ocr_content
 
-            # Clean and format content
             content = self._clean_text(content)
 
             if content.strip():
@@ -71,17 +67,14 @@ class OCRPDFLoader(DocumentLoader):
     def _extract_with_ocr_primary(self, page) -> str:
         """Enhanced OCR extraction with image preprocessing."""
         try:
-            # Convert page to high-resolution image
-            mat = fitz.Matrix(3.0, 3.0)  # 3x scale for better OCR accuracy
+            mat = fitz.Matrix(3.0, 3.0)
             pix = page.get_pixmap(matrix=mat, alpha=False)
             img_data = pix.tobytes("png")
             img = Image.open(BytesIO(img_data))
 
-            # Apply image enhancements if enabled
             if self.improve_image:
                 img = self._enhance_image_for_ocr(img)
 
-            # Multiple OCR attempts with different configurations
             ocr_configs = [
                 "--psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,!?;:()[]{}\"'-/\\@#$%^&*+=<>|~ ",
                 "--psm 4 --oem 3",
@@ -94,10 +87,8 @@ class OCRPDFLoader(DocumentLoader):
 
             for config in ocr_configs:
                 try:
-                    # Get OCR data with confidence scores
                     data = pytesseract.image_to_data(img, config=config, output_type=pytesseract.Output.DICT)
 
-                    # Calculate average confidence
                     confidences = [int(conf) for conf in data["conf"] if int(conf) > 0]
                     if confidences:
                         avg_confidence = sum(confidences) / len(confidences)
@@ -119,63 +110,53 @@ class OCRPDFLoader(DocumentLoader):
     def _enhance_image_for_ocr(self, img: Image.Image) -> Image.Image:
         """Apply image enhancements to improve OCR accuracy."""
         try:
-            # Convert to grayscale for better OCR
             if img.mode != "L":
                 img = img.convert("L")
 
-            # Enhance contrast
             enhancer = ImageEnhance.Contrast(img)
             img = enhancer.enhance(1.5)
 
-            # Enhance sharpness
             enhancer = ImageEnhance.Sharpness(img)
             img = enhancer.enhance(2.0)
 
-            # Apply slight blur to reduce noise, then sharpen
             img = img.filter(ImageFilter.MedianFilter(size=3))
             img = img.filter(ImageFilter.UnsharpMask(radius=1, percent=150, threshold=3))
 
-            # Increase brightness slightly
             enhancer = ImageEnhance.Brightness(img)
             img = enhancer.enhance(1.1)
 
             return img
 
         except Exception:
-            return img  # Return original if enhancement fails
+            return img
 
     def _clean_text(self, text: str) -> str:
         """Enhanced text cleaning for OCR output."""
         if not text:
             return ""
 
-        # Fix common OCR errors
         ocr_corrections = {
-            r"\b0\b": "O",  # Zero to O
-            r"\b1\b(?=\w)": "I",  # 1 to I when followed by letters
-            r"\bl\b": "I",  # lowercase l to I
-            r"\brn\b": "m",  # rn to m
-            r"\bvv\b": "w",  # vv to w
-            r"\b5\b(?=[a-zA-Z])": "S",  # 5 to S before letters
+            r"\b0\b": "O",
+            r"\b1\b(?=\w)": "I",
+            r"\bl\b": "I",
+            r"\brn\b": "m",
+            r"\bvv\b": "w",
+            r"\b5\b(?=[a-zA-Z])": "S",
         }
 
         for pattern, replacement in ocr_corrections.items():
             text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
 
-        # Remove excessive whitespace and artifacts
         text = re.sub(r"\n\s*\n\s*\n+", "\n\n", text)
         text = re.sub(r"[ \t]+", " ", text)
-        text = re.sub(r"^\s*\d+\s*$", "", text, flags=re.MULTILINE)  # Standalone numbers (page nums)
-        text = re.sub(r"^[^\w\s]*$", "", text, flags=re.MULTILINE)  # Symbol-only lines
+        text = re.sub(r"^\s*\d+\s*$", "", text, flags=re.MULTILINE)
+        text = re.sub(r"^[^\w\s]*$", "", text, flags=re.MULTILINE)
 
-        # Fix sentence spacing
         text = re.sub(r"([.!?])\s*\n\s*([A-Z])", r"\1 \2", text)
         text = re.sub(r"([a-z])\s*\n\s*([a-z])", r"\1 \2", text)
 
-        # Remove duplicate consecutive words
         text = re.sub(r"\b(\w+)\s+\1\b", r"\1", text)
 
-        # Clean up spacing
         text = re.sub(r"\n{3,}", "\n\n", text)
         text = text.strip()
 
