@@ -2,8 +2,8 @@ from ingestion.utils.gcp_secret import get_secret
 
 
 class SplitterConfig:
-    CHUNK_SIZE: int = 700
-    OVERLAP_SIZE: int = 50
+    CHUNK_SIZE: int = 800
+    OVERLAP_SIZE: int = 120
 
 
 class MongoConfig:
