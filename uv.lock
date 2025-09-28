@@ -14,6 +14,7 @@ dependencies = [
     { name = "giskard", extra = ["llm"] },
     { name = "numpy" },
     { name = "pytesseract" },
+    { name = "scipy" },
 ]
 
 [package.dev-dependencies]
@@ -60,6 +61,7 @@ requires-dist = [
     { name = "giskard", extras = ["llm"], specifier = ">=2.14.0" },
     { name = "numpy", specifier = ">=1.26.0" },
     { name = "pytesseract" },
+    { name = "scipy", specifier = ">=1.11.4" },
 ]
 
 [package.metadata.requires-dev]

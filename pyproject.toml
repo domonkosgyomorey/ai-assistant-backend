@@ -6,6 +6,7 @@ dependencies = [
     "giskard[llm]>=2.14.0",
     "pytesseract",
     "numpy>=1.26.0",
+    "scipy>=1.11.4",
 ]
 
 [dependency-groups]
