@@ -1,3 +1,4 @@
+import numpy as np
 from core.config.config import config
 from core.interfaces import BaseRetriever
 from core.logger import logger
@@ -47,12 +48,26 @@ class MongoRetriever(BaseRetriever):
 
     def retrieve(self, query: str, k: int = 5, **kwargs) -> list[Document]:
         """Implement BaseRetriever interface method."""
+
+        if "auto_k" in kwargs and kwargs["auto_k"]:
+            return self.retrieve_auto_k(query, **kwargs)
+
         pipeline = [
             {"$addFields": {"relevance_score": {"$meta": "vectorSearchScore"}}},
             {"$match": {"relevance_score": {"$gte": self.relevance_tolerance}}},
         ]
+
         self.get_all_similarity_scores(query)
         return self.vector_store.similarity_search(query, k=k, post_filter_pipeline=pipeline)
+
+    def retrieve_auto_k(self, query: str, **kwargs) -> list[Document]:
+        """Retrieve documents with automatic k based on relevance tolerance."""
+
+        all_score = np.array([doc["similarity_score"] for doc in self.get_all_similarity_scores(query)])
+        normalized_scores = (all_score - all_score.min()) / (all_score.max() - all_score.min() + 1e-10)
+        high_scores = [s for s in normalized_scores if s > 0.95]
+        top_k = min(15, max(2, len(high_scores)))
+        return self.vector_store.similarity_search(query, k=top_k)
 
     def retrieve_with_scores(self, query: str, k: int = 5, **kwargs) -> list[tuple[Document, float]]:
         """Retrieve documents with their similarity scores."""

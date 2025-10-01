@@ -77,6 +77,7 @@ class KnowledgeAgent(BaseAgent):
         docs = self.db_retriever.retrieve(
             query=query,
             k=self.db_top_k,
+            auto_k=True,
         )
         logger.debug(f"Retrieved {len(docs)} docs from database")
         return input_dict | {"db_docs": docs}
