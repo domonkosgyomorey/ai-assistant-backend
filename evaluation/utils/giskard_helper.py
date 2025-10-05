@@ -11,11 +11,11 @@ from giskard.rag.testset_generation import generate_testset
 from langchain_core.documents import Document
 
 from evaluation.config import Config
-from evaluation.document_processor import DocumentProcessorImpl
-from evaluation.gcp_helper import GCPHelper
-from evaluation.knowlede_communication import call
-from evaluation.persistent_knowledge_base import PersistentKnowledgeBase
-from evaluation.utils import get_embedding, get_llm
+from evaluation.utils.document_processor import DocumentProcessorImpl
+from evaluation.utils.gcp_helper import GCPHelper
+from evaluation.utils.knowlede_communication import call
+from evaluation.utils.persistent_knowledge_base import PersistentKnowledgeBase
+from evaluation.utils.utils import get_embedding, get_llm
 
 
 class LLMAdapter:
@@ -96,46 +96,46 @@ class GiskardHelper:
 
     def testset_evaluation(self, upload_results: bool = False):
         self.evaluation_results_bucket.download_file(Config.gcp.testset_file_path, Config.paths.testset_file_path)
-        testset: QATestset = QATestset.load(Config.gcp.testset_file_path)
+        testset: QATestset = QATestset.load(Config.paths.testset_file_path)
         result: RAGReport = evaluate(
             call,
             testset,
             self.knowledge_base,
             agent_description="This agent can answer questions about University of Obuda in topics such as students' requirements, administration and etc.",
         )
+        local_prefix = Path.cwd().as_posix() + "/temp/"
+        Path(local_prefix).mkdir(parents=True, exist_ok=True)
+        eval_report_path = local_prefix + "evaluation_report.json"
+        html_report_path = local_prefix + "evaluation_report.html"
+        metrics_path = local_prefix + "metrics.txt"
 
-        result.to_pandas().to_csv("evaluation_report.csv")
-        result.to_pandas().to_json("evaluation_report.json", orient="records", lines=True)
+        result.to_pandas().to_json(eval_report_path, orient="records", lines=True)
+        result.to_html(html_report_path)
 
         result_str = result.component_scores().to_string()
         result_str += "\n\n"
         result_str += result.correctness_by_question_type().to_string()
         result_str += "\n\n"
         result_str += result.correctness_by_topic().to_string()
-        with open("metrics.txt", "w", encoding="utf-8") as f:
+        with open(metrics_path, "w", encoding="utf-8") as f:
             f.write(result_str)
 
-        result.get_failures().to_json("failures.jsonl")
-
+        timestamp = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
+        gcp_prefix = f"report/{timestamp}/"
         if upload_results:
-            self.evaluation_results_bucket.upload_file("evaluation_report.csv")
-            self.evaluation_results_bucket.upload_file("evaluation_report.json")
-            self.evaluation_results_bucket.upload_file("metrics.txt")
-            self.evaluation_results_bucket.upload_file("failures.jsonl")
+            self.evaluation_results_bucket.upload_file(eval_report_path, gcp_prefix + "evaluation_report.json")
+            self.evaluation_results_bucket.upload_file(html_report_path, gcp_prefix + "evaluation_report.html")
+            self.evaluation_results_bucket.upload_file(metrics_path, gcp_prefix + "metrics.txt")
 
     def _save_and_upload_testset(self, testset: QATestset):
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as temp_file:
-            temp_path = temp_file.name
-            testset.save(temp_path)
-            try:
-                result = self.evaluation_results_bucket.upload_file(temp_path, Config.gcp.testset_file_path)
-                print(f"Testset uploaded to GCP: {result}")
-
-                Path(temp_path).unlink()
-            except Exception as e:
-                Path(temp_path).unlink()
-                print(f"Failed to upload testset: {e}")
-                raise
+        temp_path = "temp_testset.jsonl"
+        testset.save(temp_path)
+        try:
+            self.evaluation_results_bucket.upload_file(temp_path, Config.gcp.testset_file_path)
+            print(f"Testset uploaded to GCP: {Config.gcp.testset_file_path}")
+        except Exception as e:
+            print(f"Failed to upload testset: {e}")
+            raise
 
     def _documents_to_dataframe(self, docs: list[Document]) -> pd.DataFrame:
         processor = DocumentProcessorImpl()

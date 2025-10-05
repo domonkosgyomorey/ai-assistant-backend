@@ -1,6 +1,7 @@
 import pickle
 from typing import Optional
 
+import numpy as np
 import pandas as pd
 from giskard.llm.client.base import LLMClient
 from giskard.llm.embeddings.base import BaseEmbedding
@@ -43,6 +44,17 @@ class PersistentKnowledgeBase:
         try:
             savable_data = self._knowledge_base.get_savable_data()
 
+            documents_state = []
+            for doc in getattr(self._knowledge_base, "_documents", []):
+                documents_state.append(
+                    {
+                        "id": getattr(doc, "id", None),
+                        "topic_id": getattr(doc, "topic_id", None),
+                        "embeddings": getattr(doc, "embeddings", None),
+                        "reduced_embeddings": getattr(doc, "reduced_embeddings", None),
+                    }
+                )
+
             cache_data = {
                 "data_shape": self.data.shape,
                 "columns": self.columns,
@@ -53,6 +65,8 @@ class PersistentKnowledgeBase:
                 "computed_embeddings": None,
                 "computed_reduced_embeddings": None,
                 "computed_documents": None,
+                "documents_state": documents_state,
+                "language": getattr(self._knowledge_base, "_language", None),
             }
 
             try:
@@ -66,14 +80,19 @@ class PersistentKnowledgeBase:
                     if reduced is not None:
                         cache_data["computed_reduced_embeddings"] = reduced
 
-                if hasattr(self._knowledge_base, "_documents"):
-                    docs = getattr(self._knowledge_base, "_documents", None)
-                    if docs is not None:
-                        # Convert to serializable format
-                        cache_data["computed_documents"] = [
-                            {"content": doc.content, "metadata": dict(doc.metadata) if hasattr(doc, "metadata") else {}}
-                            for doc in docs
-                        ]
+                # Note: Skipping document caching to avoid attribute mismatch issues
+                # Giskard will rebuild documents from the DataFrame when needed
+                # if hasattr(self._knowledge_base, "_documents"):
+                #     docs = getattr(self._knowledge_base, "_documents", None)
+                #     if docs is not None:
+                #         # Convert to serializable format
+                #         cache_data["computed_documents"] = [
+                #             {
+                #                 "content": doc.page_content if hasattr(doc, "page_content") else getattr(doc, "content", ""),
+                #                 "metadata": dict(doc.metadata) if hasattr(doc, "metadata") else {}
+                #             }
+                #             for doc in docs
+                #         ]
             except Exception as e:
                 print(f"Could not extract some computed data: {e}")
 
@@ -98,35 +117,68 @@ class PersistentKnowledgeBase:
             # Restore the internal computed attributes
             components_restored = []
 
+            if "min_topic_size" in savable_data:
+                self._knowledge_base._min_topic_size = savable_data["min_topic_size"]
+
             if hasattr(self._knowledge_base, "_topics_inst") and "topics" in savable_data:
                 self._knowledge_base._topics_inst = savable_data["topics"]
                 components_restored.append("topics")
 
-            if hasattr(self._knowledge_base, "_documents_topics") and "documents_topics" in savable_data:
-                self._knowledge_base._documents_topics = savable_data["documents_topics"]
-                components_restored.append("document mappings")
-
             # Restore embeddings if available
             if cache_data.get("computed_embeddings") is not None:
-                self._knowledge_base._embeddings_inst = cache_data["computed_embeddings"]
+                embeddings = np.asarray(cache_data["computed_embeddings"])
+                self._knowledge_base._embeddings_inst = embeddings
+                for doc, emb in zip(getattr(self._knowledge_base, "_documents", []), embeddings, strict=False):
+                    doc.embeddings = emb
                 components_restored.append("embeddings")
 
             if cache_data.get("computed_reduced_embeddings") is not None:
-                self._knowledge_base._reduced_embeddings_inst = cache_data["computed_reduced_embeddings"]
+                reduced_embeddings = np.asarray(cache_data["computed_reduced_embeddings"])
+                self._knowledge_base._reduced_embeddings_inst = reduced_embeddings
+                for doc, emb in zip(getattr(self._knowledge_base, "_documents", []), reduced_embeddings, strict=False):
+                    doc.reduced_embeddings = emb
                 components_restored.append("reduced embeddings")
 
-            # Restore documents if available
-            if cache_data.get("computed_documents") is not None:
-                from types import SimpleNamespace
+            documents_state = cache_data.get("documents_state")
+            if documents_state:
+                doc_state_by_id = {state.get("id"): state for state in documents_state if state.get("id") is not None}
+                for index, doc in enumerate(getattr(self._knowledge_base, "_documents", [])):
+                    doc_state = doc_state_by_id.get(doc.id)
+                    if doc_state is None and index < len(documents_state):
+                        doc_state = documents_state[index]
+                    if not doc_state:
+                        continue
 
-                docs = []
-                for doc_data in cache_data["computed_documents"]:
-                    doc = SimpleNamespace()
-                    doc.content = doc_data["content"]
-                    doc.metadata = doc_data["metadata"]
-                    docs.append(doc)
-                self._knowledge_base._documents = docs
-                components_restored.append("documents")
+                    if doc_state.get("topic_id") is not None:
+                        doc.topic_id = doc_state["topic_id"]
+
+                    if doc_state.get("embeddings") is not None and getattr(doc, "embeddings", None) is None:
+                        doc.embeddings = np.asarray(doc_state["embeddings"])
+
+                    if (
+                        doc_state.get("reduced_embeddings") is not None
+                        and getattr(doc, "reduced_embeddings", None) is None
+                    ):
+                        doc.reduced_embeddings = np.asarray(doc_state["reduced_embeddings"])
+
+                components_restored.append("document state")
+
+            if cache_data.get("language") is not None:
+                self._knowledge_base._language = cache_data["language"]
+                components_restored.append("language")
+
+            # Note: Not restoring documents from cache to avoid attribute issues
+            # Giskard will rebuild documents from DataFrame when needed
+            # if cache_data.get("computed_documents") is not None:
+            #     docs = []
+            #     for doc_data in cache_data["computed_documents"]:
+            #         doc = Document(
+            #             page_content=doc_data["content"],
+            #             metadata=doc_data["metadata"]
+            #         )
+            #         docs.append(doc)
+            #     self._knowledge_base._documents = docs
+            #     components_restored.append("documents")
 
             print(f"Restored components: {', '.join(components_restored)}")
             return True
