@@ -11,6 +11,7 @@ from giskard.rag.testset_generation import generate_testset
 from langchain_core.documents import Document
 
 from evaluation.config import Config
+from evaluation.utils.custom_metric_generator import create_heatmap, create_low_performance_bar_chart
 from evaluation.utils.document_processor import DocumentProcessorImpl
 from evaluation.utils.gcp_helper import GCPHelper
 from evaluation.utils.knowlede_communication import call
@@ -108,6 +109,8 @@ class GiskardHelper:
         eval_report_path = local_prefix + "evaluation_report.json"
         html_report_path = local_prefix + "evaluation_report.html"
         metrics_path = local_prefix + "metrics.txt"
+        heatmap_path = local_prefix + "heatmap.png"
+        low_perf_path = local_prefix + "low_performance.png"
 
         result.to_pandas().to_json(eval_report_path, orient="records", lines=True)
         result.to_html(html_report_path)
@@ -120,12 +123,17 @@ class GiskardHelper:
         with open(metrics_path, "w", encoding="utf-8") as f:
             f.write(result_str)
 
+        create_heatmap(result.to_pandas(), heatmap_path)
+        create_low_performance_bar_chart(result.component_scores().reset_index(), low_perf_path)
+
         timestamp = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
         gcp_prefix = f"report/{timestamp}/"
         if upload_results:
             self.evaluation_results_bucket.upload_file(eval_report_path, gcp_prefix + "evaluation_report.json")
             self.evaluation_results_bucket.upload_file(html_report_path, gcp_prefix + "evaluation_report.html")
             self.evaluation_results_bucket.upload_file(metrics_path, gcp_prefix + "metrics.txt")
+            self.evaluation_results_bucket.upload_file(heatmap_path, gcp_prefix + "heatmap.png")
+            self.evaluation_results_bucket.upload_file(low_perf_path, gcp_prefix + "low_performance.png")
 
     def _save_and_upload_testset(self, testset: QATestset):
         temp_path = "temp_testset.jsonl"

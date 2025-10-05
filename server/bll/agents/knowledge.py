@@ -18,8 +18,6 @@ class Knowledge(KnowledgeAgent):
                     "uni-obuda.hu/en",
                     "nik.uni-obuda.hu",
                     "neptun.uni-obuda.hu",
-                    "en.wikipedia.org",
-                    "hu.wikipedia.org",
                 ],
             ),
             db_top_k=6,

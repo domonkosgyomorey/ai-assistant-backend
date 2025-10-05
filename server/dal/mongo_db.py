@@ -65,8 +65,8 @@ class MongoRetriever(BaseRetriever):
 
         all_score = np.array([doc["similarity_score"] for doc in self.get_all_similarity_scores(query)])
         normalized_scores = (all_score - all_score.min()) / (all_score.max() - all_score.min() + 1e-10)
-        high_scores = [s for s in normalized_scores if s > 0.95]
-        top_k = min(15, max(2, len(high_scores)))
+        high_scores = [s for s in normalized_scores if s > 0.90]
+        top_k = min(15, max(3, len(high_scores)))
         return self.vector_store.similarity_search(query, k=top_k)
 
     def retrieve_with_scores(self, query: str, k: int = 5, **kwargs) -> list[tuple[Document, float]]:
