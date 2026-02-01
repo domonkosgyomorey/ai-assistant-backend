@@ -20,6 +20,11 @@ class MessageModel(BaseModel):
             raise ValueError(f"Unknown role: {self.role}")
 
 
+class ResponseModel(BaseModel):
+    message: MessageModel = Field(description="The AI response message")
+    metadata: dict = Field(description="Additional metadata about the response")
+
+
 class RequestModel(BaseModel):
     messages: List[MessageModel] = Field(description="The conversation messages to send to the knowledge agent")
     chatId: str = Field(default="default", description="The chat session identifier")
@@ -33,7 +38,7 @@ class RequestModel(BaseModel):
             return messages
 
         if messages[-1].role == "ai":
-            raise ValueError("Message sequence must end with an AI message")
+            raise ValueError("Message sequence must end with a User message")
 
         for i in range(1, len(messages)):
             current_role = messages[i].role

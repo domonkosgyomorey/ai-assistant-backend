@@ -20,9 +20,9 @@ class Knowledge(KnowledgeAgent):
                     "neptun.uni-obuda.hu",
                 ],
             ),
-            db_top_k=6,
+            db_top_k=3,
             web_max_k=3,
-            web_supplement_k=2,
+            web_supplement_k=1,
             additional_instructions="""
 - When discussing academic requirements, reference specific systems (like NEPTUN)
 - Include information about deadlines, enrollment periods, and academic calendar

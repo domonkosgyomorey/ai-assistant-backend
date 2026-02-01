@@ -114,7 +114,7 @@ class PersistentKnowledgeBase:
             # Now restore the computed state BEFORE accessing .topics
             savable_data = cache_data.get("giskard_savable_data", {})
 
-            # Restore the internal computed attributes
+            # Restore the file computed attributes
             components_restored = []
 
             if "min_topic_size" in savable_data:

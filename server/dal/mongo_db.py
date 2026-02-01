@@ -65,8 +65,8 @@ class MongoRetriever(BaseRetriever):
 
         all_score = np.array([doc["similarity_score"] for doc in self.get_all_similarity_scores(query)])
         normalized_scores = (all_score - all_score.min()) / (all_score.max() - all_score.min() + 1e-10)
-        high_scores = [s for s in normalized_scores if s > 0.90]
-        top_k = min(15, max(3, len(high_scores)))
+        high_scores = [s for s in normalized_scores if s > 0.95]
+        top_k = min(12, max(1, len(high_scores)))
         return self.vector_store.similarity_search(query, k=top_k)
 
     def retrieve_with_scores(self, query: str, k: int = 5, **kwargs) -> list[tuple[Document, float]]:
@@ -84,7 +84,7 @@ class MongoRetriever(BaseRetriever):
         """Retrieve ALL documents with similarity scores above threshold, not limited by k."""
         threshold = score_threshold if score_threshold is not None else self.relevance_tolerance
 
-        large_k = kwargs.get("max_results", 10000)  # Adjust based on your collection size
+        large_k = kwargs.get("max_results", 10000)
 
         pipeline = [
             {"$addFields": {"relevance_score": {"$meta": "vectorSearchScore"}}},
@@ -94,9 +94,7 @@ class MongoRetriever(BaseRetriever):
 
     def get_all_similarity_scores(self, query: str) -> list[dict]:
         """Get all similarity scores with document IDs."""
-        import time
 
-        t0 = time.perf_counter()
         embedding_vector = self.vector_store._embedding.embed_query(query)
         pipeline = [
             {

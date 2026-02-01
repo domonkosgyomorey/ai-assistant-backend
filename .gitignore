@@ -1,3 +1,11 @@
+
+*.png
+*.joblib
+*.pdf
+*.json
+*.zip
+*.pkl
+
 # Terraform
 **/.terraform/
 **/.terraform.lock.hcl

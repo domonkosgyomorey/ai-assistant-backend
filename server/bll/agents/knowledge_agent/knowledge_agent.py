@@ -12,7 +12,7 @@ from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 
 class KnowledgeAgent(BaseAgent):
     """
-    Knowledge agent that leverages internal knowledge and optional web search
+    Knowledge agent that leverages file knowledge and optional web search
     to provide comprehensive answers with proper source handling.
     """
 
@@ -22,7 +22,7 @@ class KnowledgeAgent(BaseAgent):
         domain_context: str,
         db_retriever: BaseRetriever,
         web_search_retriever: BaseRetriever | None = None,
-        db_top_k: int = 5,
+        db_top_k: int = 8,
         web_max_k: int = 5,
         web_supplement_k: int = 2,
         additional_instructions: str = "",
@@ -118,7 +118,7 @@ class KnowledgeAgent(BaseAgent):
 
         for doc in db_docs:
             doc.metadata = doc.metadata or {}
-            doc.metadata["type"] = "internal"
+            doc.metadata["type"] = "file"
             all_docs.append(doc)
 
         for doc in web_docs:
@@ -131,7 +131,7 @@ class KnowledgeAgent(BaseAgent):
             source_type: str = doc.metadata["type"]
             source_info: str = str(doc.metadata.get("source"))
 
-            if source_type == "internal":
+            if source_type == "file":
                 public_url = self.public_helper.extract_public_url_from_document(doc)
                 if public_url:
                     page_number = doc.metadata.get("page_number", 1)
@@ -156,7 +156,7 @@ class KnowledgeAgent(BaseAgent):
         web_docs = input_dict.get("web_docs", [])
 
         for doc in db_docs:
-            source = doc.metadata.get("source", "Unknown internal source")
+            source = doc.metadata.get("source", "Unknown file source")
             if source not in references:
                 references.append(source)
 
@@ -184,6 +184,12 @@ class KnowledgeAgent(BaseAgent):
             | RunnableLambda(self._retrieve_db_docs)
             | RunnableLambda(self._conditional_web_search)
             | RunnableLambda(self._merge_context)
+            | RunnablePassthrough.assign(
+                db_docs_ids=RunnableLambda(
+                    lambda x: [str(doc.metadata.get("_id", "")) for doc in x.get("db_docs", [])]
+                ),
+                web_links=RunnableLambda(lambda x: [doc.metadata.get("source", "") for doc in x.get("web_docs", [])]),
+            )
             | RunnablePassthrough.assign(
                 answer=RunnableLambda(self._format_prompt_input)
                 | KNOWLEDGE_SYSTEM_PROMPT

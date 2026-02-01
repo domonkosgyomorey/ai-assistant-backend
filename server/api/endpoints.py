@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 
-from api.common_types import RequestModel
+from api.common_types import MessageModel, RequestModel, ResponseModel
 from bll.agents.knowledge import Knowledge
 from dal.mongo_db import MongoDB
 from fastapi import FastAPI
@@ -27,7 +27,7 @@ app.add_middleware(
 
 
 @app.post("/prompt")
-async def prompt(request: RequestModel):
+async def prompt(request: RequestModel) -> ResponseModel:
     messages = request.messages
     messages = [msg.to_langchain_message() for msg in messages]
 
@@ -35,7 +35,7 @@ async def prompt(request: RequestModel):
 
     context = await agent.ainvoke({"messages": messages})
     answer = context["answer"]
-    response_chunk = {"message": {"role": "ai", "content": answer}, "metadata": context}
+    response_chunk = ResponseModel(message=MessageModel(role="ai", content=answer), metadata=context)
 
     return response_chunk
 

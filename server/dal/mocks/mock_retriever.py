@@ -26,23 +26,23 @@ class MockBaseRetriever(BaseRetriever):
         return [
             Document(
                 page_content="This is a sample document about artificial intelligence and machine learning.",
-                metadata={"source": "mock_doc_1.pdf", "page": 1, "type": "internal"},
+                metadata={"source": "mock_doc_1.pdf", "page": 1, "type": "file"},
             ),
             Document(
                 page_content="Python programming language is widely used for data science and AI development.",
-                metadata={"source": "mock_doc_2.pdf", "page": 1, "type": "internal"},
+                metadata={"source": "mock_doc_2.pdf", "page": 1, "type": "file"},
             ),
             Document(
                 page_content="LangChain is a framework for developing applications powered by language models.",
-                metadata={"source": "mock_doc_3.pdf", "page": 1, "type": "internal"},
+                metadata={"source": "mock_doc_3.pdf", "page": 1, "type": "file"},
             ),
             Document(
                 page_content="Vector databases enable efficient similarity search for large document collections.",
-                metadata={"source": "mock_doc_4.pdf", "page": 1, "type": "internal"},
+                metadata={"source": "mock_doc_4.pdf", "page": 1, "type": "file"},
             ),
             Document(
                 page_content="Natural language processing involves understanding and generating human language.",
-                metadata={"source": "mock_doc_5.pdf", "page": 1, "type": "internal"},
+                metadata={"source": "mock_doc_5.pdf", "page": 1, "type": "file"},
             ),
         ]
 
